@@ -2,25 +2,50 @@
 <html>
 <head>
 
-<title>Station Board</title>
+<title>Station Display</title>
 
 <style>
 
 body{
 background:black;
-color:#22c55e;
+color:#00ff9c;
 font-family:monospace;
-text-align:center;
-padding:40px;
+padding:30px;
 }
 
 h1{
+text-align:center;
 font-size:40px;
+margin-bottom:30px;
 }
 
-.train{
+table{
+width:100%;
+border-collapse:collapse;
 font-size:28px;
-margin:10px;
+}
+
+th{
+text-align:left;
+border-bottom:2px solid #00ff9c;
+padding:10px;
+}
+
+td{
+padding:10px;
+border-bottom:1px solid #033;
+}
+
+.next{
+color:#ffff00;
+font-weight:bold;
+}
+
+.clock{
+position:absolute;
+top:20px;
+right:40px;
+font-size:24px;
 }
 
 </style>
@@ -29,31 +54,73 @@ margin:10px;
 
 <body>
 
-<h1>Next Arrivals</h1>
+<div class="clock" id="clock"></div>
 
-<div id="board"></div>
+<h1>STATION ARRIVAL BOARD</h1>
+
+<table>
+
+<thead>
+<tr>
+<th>TRAIN</th>
+<th>STATION</th>
+<th>ARRIVAL</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
 
 <script>
 
+let data=[];
+
 fetch("data.json")
 .then(res=>res.json())
-.then(data=>{
+.then(json=>{
+data=json;
+renderBoard();
+});
+
+function renderBoard(){
 
 let board=document.getElementById("board");
 
-data.slice(0,10).forEach(t=>{
+let rows=data
+.filter(d=>d.arrival)
+.sort((a,b)=>a.arrival.localeCompare(b.arrival))
+.slice(0,10);
 
-let div=document.createElement("div");
+let html="";
 
-div.className="train";
+rows.forEach((r,i)=>{
 
-div.innerHTML=`Train ${t.train_no} - ${t.station_name} - ${t.arrival}`;
-
-board.appendChild(div);
+html+=`
+<tr class="${i==0?'next':''}">
+<td>${r.train_no}</td>
+<td>${r.station_name}</td>
+<td>${r.arrival}</td>
+</tr>
+`;
 
 });
 
-});
+board.innerHTML=html;
+
+}
+
+function updateClock(){
+
+let now=new Date();
+
+let time=now.toLocaleTimeString();
+
+document.getElementById("clock").innerHTML=time;
+
+}
+
+setInterval(updateClock,1000);
 
 </script>
 

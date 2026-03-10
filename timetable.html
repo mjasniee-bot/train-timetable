@@ -78,7 +78,12 @@ populate();
 function populate(){
 
 let trains=[...new Set(data.map(d=>d.train_no))];
-let stations=[...new Set(data.map(d=>d.station_name))];
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)];
+//let stations=[...new Set(data.map(d=>d.station_name))];
 
 let train=document.getElementById("trainList");
 let station=document.getElementById("stationList");
