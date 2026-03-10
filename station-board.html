@@ -2,7 +2,7 @@
 <html>
 <head>
 
-<title>Station Display</title>
+<title>Station Arrival Board</title>
 
 <style>
 
@@ -37,7 +37,7 @@ border-bottom:1px solid #033;
 }
 
 .next{
-color:#ffff00;
+color:yellow;
 font-weight:bold;
 }
 
@@ -73,6 +73,7 @@ font-size:24px;
 <th>TRAIN</th>
 <th>STATION</th>
 <th>ARRIVAL</th>
+<th>MIN</th>
 </tr>
 </thead>
 
@@ -91,13 +92,36 @@ data=json;
 renderBoard();
 });
 
+function getMinutes(arrival){
+
+let now=new Date();
+
+let currentMinutes=now.getHours()*60+now.getMinutes();
+
+let parts=arrival.split(":");
+
+let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+
+return arrivalMinutes-currentMinutes;
+
+}
+
 function renderBoard(){
 
 let board=document.getElementById("board");
 
 let rows=data
 .filter(d=>d.arrival)
-.sort((a,b)=>a.arrival.localeCompare(b.arrival))
+.map(d=>{
+
+return{
+...d,
+minutes:getMinutes(d.arrival)
+}
+
+})
+.filter(d=>d.minutes>=0)
+.sort((a,b)=>a.minutes-b.minutes)
 .slice(0,10);
 
 let html="";
@@ -109,6 +133,7 @@ html+=`
 <td>${r.train_no}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival}</td>
+<td>${r.minutes}</td>
 </tr>
 `;
 
@@ -122,13 +147,14 @@ function updateClock(){
 
 let now=new Date();
 
-let time=now.toLocaleTimeString();
-
-document.getElementById("clock").innerHTML=time;
+document.getElementById("clock").innerHTML=
+now.toLocaleTimeString();
 
 }
 
 setInterval(updateClock,1000);
+
+setInterval(renderBoard,30000);
 
 </script>
 
