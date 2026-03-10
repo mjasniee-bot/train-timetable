@@ -2,7 +2,7 @@
 <html>
 <head>
 
-<title>Station Arrival Board</title>
+<title>Station Train Search</title>
 
 <style>
 
@@ -15,20 +15,26 @@ padding:30px;
 
 h1{
 text-align:center;
-font-size:40px;
+font-size:36px;
 margin-bottom:30px;
+}
+
+select{
+padding:10px;
+font-size:20px;
+margin-bottom:20px;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
-font-size:28px;
+font-size:26px;
 }
 
 th{
-text-align:left;
 border-bottom:2px solid #00ff9c;
 padding:10px;
+text-align:left;
 }
 
 td{
@@ -39,13 +45,6 @@ border-bottom:1px solid #033;
 .next{
 color:yellow;
 font-weight:bold;
-}
-
-.clock{
-position:absolute;
-top:20px;
-right:40px;
-font-size:24px;
 }
 
 </style>
@@ -64,9 +63,11 @@ font-size:24px;
 
 </div>
 
-<div class="clock" id="clock"></div>
+<h1>STATION TRAIN SEARCH</h1>
 
-<h1>STATION ARRIVAL BOARD</h1>
+<select id="stationList"></select>
+
+<button onclick="searchStation()">Search</button>
 
 <table>
 
@@ -91,8 +92,27 @@ fetch("data.json")
 .then(res=>res.json())
 .then(json=>{
 data=json;
-renderBoard();
+populateStations();
 });
+
+function populateStations(){
+
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)];
+
+let select=document.getElementById("stationList");
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+select.appendChild(opt);
+});
+
+}
 
 function getMinutes(arrival){
 
@@ -108,12 +128,12 @@ return arrivalMinutes-currentMinutes;
 
 }
 
-function renderBoard(){
+function searchStation(){
 
-let board=document.getElementById("board");
+let station=document.getElementById("stationList").value;
 
 let rows=data
-.filter(d=>d.arrival)
+.filter(d=>d.station_name==station && d.arrival)
 .map(d=>{
 
 return{
@@ -122,9 +142,8 @@ minutes:getMinutes(d.arrival)
 }
 
 })
-.filter(d=>d.minutes>=0)
-.sort((a,b)=>a.minutes-b.minutes)
-.slice(0,10);
+.filter(d=>d.minutes>=0 && d.minutes<=60)
+.sort((a,b)=>a.minutes-b.minutes);
 
 let html="";
 
@@ -141,22 +160,9 @@ html+=`
 
 });
 
-board.innerHTML=html;
+document.getElementById("board").innerHTML=html;
 
 }
-
-function updateClock(){
-
-let now=new Date();
-
-document.getElementById("clock").innerHTML=
-now.toLocaleTimeString();
-
-}
-
-setInterval(updateClock,1000);
-
-setInterval(renderBoard,30000);
 
 </script>
 
