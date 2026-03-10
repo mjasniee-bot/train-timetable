@@ -122,7 +122,7 @@ let currentMinutes=now.getHours()*60+now.getMinutes();
 
 let parts=arrival.split(":");
 
-let arrivalMinutes=parseInt(parts[0])*180+parseInt(parts[1]);
+let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
 
 return arrivalMinutes-currentMinutes;
 
@@ -142,7 +142,7 @@ minutes:getMinutes(d.arrival)
 }
 
 })
-.filter(d=>d.minutes>=0 && d.minutes<=60)
+.filter(d=>d.minutes>=0 && d.minutes<=180)
 .sort((a,b)=>a.minutes-b.minutes);
 
 let html="";
@@ -163,6 +163,8 @@ html+=`
 document.getElementById("board").innerHTML=html;
 
 }
+
+setInterval(searchStation,60000);
 
 </script>
 
