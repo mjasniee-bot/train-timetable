@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Train Timetable</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#020617;
+color:white;
+text-align:center;
+padding:30px;
+}
+
+select{
+padding:10px;
+margin:10px;
+width:250px;
+}
+
+button{
+padding:10px 20px;
+background:#22c55e;
+border:none;
+color:white;
+cursor:pointer;
+}
+
+table{
+margin:auto;
+margin-top:30px;
+border-collapse:collapse;
+width:80%;
+}
+
+td,th{
+border-bottom:1px solid #334155;
+padding:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Train Timetable</h1>
+
+<select id="trainList">
+<option>Select Train</option>
+</select>
+
+<button onclick="searchTrain()">Search Train</button>
+
+<br><br>
+
+<select id="stationList">
+<option>Select Station</option>
+</select>
+
+<button onclick="searchStation()">Search Station</button>
+
+<table id="result"></table>
+
+<script>
+
+let data=[];
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>{
+data=json;
+populate();
+});
+
+function populate(){
+
+let trains=[...new Set(data.map(d=>d.train_no))];
+let stations=[...new Set(data.map(d=>d.station_name))];
+
+let train=document.getElementById("trainList");
+let station=document.getElementById("stationList");
+
+trains.sort().forEach(t=>{
+let opt=document.createElement("option");
+opt.value=t;
+opt.text=t;
+train.appendChild(opt);
+});
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+station.appendChild(opt);
+});
+
+}
+
+function searchTrain(){
+
+let t=document.getElementById("trainList").value;
+
+let rows=data.filter(d=>d.train_no==t);
+
+display(rows);
+
+}
+
+function searchStation(){
+
+let s=document.getElementById("stationList").value;
+
+let rows=data.filter(d=>d.station_name==s);
+
+display(rows);
+
+}
+
+function display(rows){
+
+let html="<tr><th>Train</th><th>Station</th><th>Arrival</th><th>Departure</th></tr>";
+
+rows.forEach(r=>{
+
+html+=`<tr>
+<td>${r.train_no}</td>
+<td>${r.station_name}</td>
+<td>${r.arrival||"-"}</td>
+<td>${r.departure||"-"}</td>
+</tr>`;
+
+});
+
+document.getElementById("result").innerHTML=html;
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Station Board</title>
+
+<style>
+
+body{
+background:black;
+color:#22c55e;
+font-family:monospace;
+text-align:center;
+padding:40px;
+}
+
+h1{
+font-size:40px;
+}
+
+.train{
+font-size:28px;
+margin:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Next Arrivals</h1>
+
+<div id="board"></div>
+
+<script>
+
+fetch("data.json")
+.then(res=>res.json())
+.then(data=>{
+
+let board=document.getElementById("board");
+
+data.slice(0,10).forEach(t=>{
+
+let div=document.createElement("div");
+
+div.className="train";
+
+div.innerHTML=`Train ${t.train_no} - ${t.station_name} - ${t.arrival}`;
+
+board.appendChild(div);
+
+});
+
+});
+
+</script>
+
+</body>
+</html>

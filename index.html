@@ -2,7 +2,7 @@
 <html>
 <head>
 
-<title>Train Timetable System</title>
+<title>Train Passenger System</title>
 
 <style>
 
@@ -11,65 +11,22 @@ font-family:Arial;
 background:#0f172a;
 color:white;
 text-align:center;
-padding:30px;
-}
-
-h1{
-margin-bottom:30px;
-}
-
-select{
-padding:10px;
-margin:10px;
-width:250px;
-border-radius:6px;
-border:none;
+padding-top:100px;
 }
 
 button{
-padding:10px 20px;
-border:none;
+padding:15px 30px;
+margin:20px;
+font-size:18px;
 background:#22c55e;
+border:none;
+border-radius:8px;
 color:white;
 cursor:pointer;
-border-radius:6px;
 }
 
 button:hover{
 background:#16a34a;
-}
-
-table{
-margin:auto;
-margin-top:30px;
-border-collapse:collapse;
-width:80%;
-}
-
-th{
-background:#1e293b;
-padding:12px;
-}
-
-td{
-padding:10px;
-border-bottom:1px solid #334155;
-}
-
-.board{
-margin-top:40px;
-background:#020617;
-padding:20px;
-border-radius:10px;
-}
-
-.board h2{
-margin-bottom:20px;
-}
-
-.arrival{
-font-size:20px;
-margin:5px;
 }
 
 </style>
@@ -78,140 +35,15 @@ margin:5px;
 
 <body>
 
-<h1>🚆 Train Timetable System</h1>
+<h1>🚆 Train Passenger Information System</h1>
 
-<div>
+<a href="timetable.html">
+<button>Search Train Timetable</button>
+</a>
 
-<label>Select Train</label><br>
-
-<select id="trainList">
-<option value="">Select Train</option>
-</select>
-
-<button onclick="searchTrain()">Search Train</button>
-
-</div>
-
-<br>
-
-<div>
-
-<label>Select Station</label><br>
-
-<select id="stationList">
-<option value="">Select Station</option>
-</select>
-
-<button onclick="searchStation()">Search Station</button>
-
-</div>
-
-<table id="result"></table>
-
-<div class="board">
-
-<h2>Next Arrivals</h2>
-
-<div id="arrivalBoard"></div>
-
-</div>
-
-<script>
-
-let data=[];
-
-fetch("data.json")
-.then(res=>res.json())
-.then(json=>{
-data=json;
-populateLists();
-});
-
-function populateLists(){
-
-let trains=[...new Set(data.map(d=>d.train_no))];
-let stations=[...new Set(data.map(d=>d.station_name))];
-
-let trainSelect=document.getElementById("trainList");
-let stationSelect=document.getElementById("stationList");
-
-trains.sort().forEach(t=>{
-let opt=document.createElement("option");
-opt.value=t;
-opt.text=t;
-trainSelect.appendChild(opt);
-});
-
-stations.sort().forEach(s=>{
-let opt=document.createElement("option");
-opt.value=s;
-opt.text=s;
-stationSelect.appendChild(opt);
-});
-
-}
-
-function searchTrain(){
-
-let train=document.getElementById("trainList").value;
-
-let result=data.filter(d=>d.train_no==train);
-
-display(result);
-
-}
-
-function searchStation(){
-
-let station=document.getElementById("stationList").value;
-
-let result=data.filter(d=>d.station_name==station);
-
-display(result);
-showNextArrivals(result);
-
-}
-
-function display(rows){
-
-let html="<tr><th>Train</th><th>Station</th><th>Arrival</th><th>Departure</th></tr>";
-
-rows.forEach(r=>{
-
-html+=`<tr>
-<td>${r.train_no}</td>
-<td>${r.station_name}</td>
-<td>${r.arrival || "-"}</td>
-<td>${r.departure || "-"}</td>
-</tr>`;
-
-});
-
-document.getElementById("result").innerHTML=html;
-
-}
-
-function showNextArrivals(rows){
-
-let board=document.getElementById("arrivalBoard");
-
-board.innerHTML="";
-
-rows.slice(0,5).forEach(r=>{
-
-let div=document.createElement("div");
-
-div.className="arrival";
-
-div.innerHTML=`🚆 Train ${r.train_no} arriving at ${r.arrival}`;
-
-board.appendChild(div);
-
-});
-
-}
-
-</script>
+<a href="station-board.html">
+<button>Station Arrival Board</button>
+</a>
 
 </body>
 </html>
