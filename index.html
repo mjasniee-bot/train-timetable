@@ -39,16 +39,23 @@ padding:10px;
 
 <h1>🚆 Train Timetable System</h1>
 
-<input id="searchTrain" placeholder="Train Number">
+<label>Select Train</label><br>
+<select id="trainList">
+<option value="">-- Select Train --</option>
+</select>
+
 <button onclick="searchTrain()">Search Train</button>
 
-<br>
+<br><br>
 
-<input id="searchStation" placeholder="Station Name">
+<label>Select Station</label><br>
+<select id="stationList">
+<option value="">-- Select Station --</option>
+</select>
+
 <button onclick="searchStation()">Search Station</button>
 
-<table id="result">
-</table>
+<table id="result"></table>
 
 <script>
 
@@ -56,11 +63,38 @@ let data=[];
 
 fetch("data.json")
 .then(res=>res.json())
-.then(json=>data=json);
+.then(json=>{
+data=json;
+populateLists();
+});
+
+function populateLists(){
+
+let trains=[...new Set(data.map(d=>d.train_no))];
+let stations=[...new Set(data.map(d=>d.station_name))];
+
+let trainSelect=document.getElementById("trainList");
+let stationSelect=document.getElementById("stationList");
+
+trains.sort().forEach(t=>{
+let option=document.createElement("option");
+option.value=t;
+option.text=t;
+trainSelect.appendChild(option);
+});
+
+stations.sort().forEach(s=>{
+let option=document.createElement("option");
+option.value=s;
+option.text=s;
+stationSelect.appendChild(option);
+});
+
+}
 
 function searchTrain(){
 
-let train=document.getElementById("searchTrain").value;
+let train=document.getElementById("trainList").value;
 
 let result=data.filter(d=>d.train_no==train);
 
@@ -70,9 +104,9 @@ display(result);
 
 function searchStation(){
 
-let station=document.getElementById("searchStation").value.toLowerCase();
+let station=document.getElementById("stationList").value;
 
-let result=data.filter(d=>d.station_name.toLowerCase().includes(station));
+let result=data.filter(d=>d.station_name==station);
 
 display(result);
 
