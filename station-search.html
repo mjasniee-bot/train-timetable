@@ -150,7 +150,7 @@ minutes:getMinutes(d.arrival)
 }
 
 })
-.filter(d=>d.minutes>=0 && d.minutes<=180)
+.filter(d=>d.minutes>=0 && d.minutes<=300)
 .sort((a,b)=>a.minutes-b.minutes);
 
 let html="";
@@ -182,6 +182,7 @@ now.toLocaleTimeString();
 }
 
 setInterval(updateClock,1000);
+
 setInterval(searchStation,60000);
 
 </script>
