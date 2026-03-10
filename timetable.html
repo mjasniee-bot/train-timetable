@@ -130,10 +130,17 @@ let rows=data
 .filter(d=>d.station_name==s)
 .sort((a,b)=>{
 
-let t1=(a.arrival||"99:99").replace(":","");
-let t2=(b.arrival||"99:99").replace(":","");
+let arrivalA=(a.arrival||"99:99").replace(":","");
+let arrivalB=(b.arrival||"99:99").replace(":","");
 
-return t1-t2;
+if(arrivalA!==arrivalB){
+return arrivalA-arrivalB;
+}
+
+let depA=(a.departure||"99:99").replace(":","");
+let depB=(b.departure||"99:99").replace(":","");
+
+return depA-depB;
 
 });
 
