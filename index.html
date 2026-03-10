@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Train Timetable System</title>
+<style>
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+padding:40px;
+}
+
+input{
+padding:10px;
+margin:10px;
+width:250px;
+}
+
+button{
+padding:10px 20px;
+cursor:pointer;
+}
+
+table{
+margin:auto;
+margin-top:20px;
+border-collapse:collapse;
+}
+
+td,th{
+border:1px solid white;
+padding:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🚆 Train Timetable System</h1>
+
+<input id="searchTrain" placeholder="Train Number">
+<button onclick="searchTrain()">Search Train</button>
+
+<br>
+
+<input id="searchStation" placeholder="Station Name">
+<button onclick="searchStation()">Search Station</button>
+
+<table id="result">
+</table>
+
+<script>
+
+let data=[];
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>data=json);
+
+function searchTrain(){
+
+let train=document.getElementById("searchTrain").value;
+
+let result=data.filter(d=>d.train_no==train);
+
+display(result);
+
+}
+
+function searchStation(){
+
+let station=document.getElementById("searchStation").value.toLowerCase();
+
+let result=data.filter(d=>d.station_name.toLowerCase().includes(station));
+
+display(result);
+
+}
+
+function display(rows){
+
+let html="<tr><th>Train</th><th>Station</th><th>Arrival</th><th>Departure</th></tr>";
+
+rows.forEach(r=>{
+html+=`<tr>
+<td>${r.train_no}</td>
+<td>${r.station_name}</td>
+<td>${r.arrival}</td>
+<td>${r.departure}</td>
+</tr>`;
+});
+
+document.getElementById("result").innerHTML=html;
+
+}
+
+</script>
+
+</body>
+</html>
