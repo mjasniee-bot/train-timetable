@@ -113,7 +113,16 @@ function searchStation(){
 
 let s=document.getElementById("stationList").value;
 
-let rows=data.filter(d=>d.station_name==s);
+let rows=data
+.filter(d=>d.station_name==s)
+.sort((a,b)=>{
+
+let t1=(a.arrival||"99:99").replace(":","");
+let t2=(b.arrival||"99:99").replace(":","");
+
+return t1-t2;
+
+});
 
 display(rows);
 
