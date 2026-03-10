@@ -1,61 +1,120 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Train Timetable System</title>
+
 <style>
+
 body{
 font-family:Arial;
 background:#0f172a;
 color:white;
 text-align:center;
-padding:40px;
+padding:30px;
 }
 
-input{
+h1{
+margin-bottom:30px;
+}
+
+select{
 padding:10px;
 margin:10px;
 width:250px;
+border-radius:6px;
+border:none;
 }
 
 button{
 padding:10px 20px;
+border:none;
+background:#22c55e;
+color:white;
 cursor:pointer;
+border-radius:6px;
+}
+
+button:hover{
+background:#16a34a;
 }
 
 table{
 margin:auto;
-margin-top:20px;
+margin-top:30px;
 border-collapse:collapse;
+width:80%;
 }
 
-td,th{
-border:1px solid white;
-padding:10px;
+th{
+background:#1e293b;
+padding:12px;
 }
+
+td{
+padding:10px;
+border-bottom:1px solid #334155;
+}
+
+.board{
+margin-top:40px;
+background:#020617;
+padding:20px;
+border-radius:10px;
+}
+
+.board h2{
+margin-bottom:20px;
+}
+
+.arrival{
+font-size:20px;
+margin:5px;
+}
+
 </style>
+
 </head>
 
 <body>
 
 <h1>🚆 Train Timetable System</h1>
 
+<div>
+
 <label>Select Train</label><br>
+
 <select id="trainList">
-<option value="">-- Select Train --</option>
+<option value="">Select Train</option>
 </select>
 
 <button onclick="searchTrain()">Search Train</button>
 
-<br><br>
+</div>
+
+<br>
+
+<div>
 
 <label>Select Station</label><br>
+
 <select id="stationList">
-<option value="">-- Select Station --</option>
+<option value="">Select Station</option>
 </select>
 
 <button onclick="searchStation()">Search Station</button>
 
+</div>
+
 <table id="result"></table>
+
+<div class="board">
+
+<h2>Next Arrivals</h2>
+
+<div id="arrivalBoard"></div>
+
+</div>
 
 <script>
 
@@ -77,17 +136,17 @@ let trainSelect=document.getElementById("trainList");
 let stationSelect=document.getElementById("stationList");
 
 trains.sort().forEach(t=>{
-let option=document.createElement("option");
-option.value=t;
-option.text=t;
-trainSelect.appendChild(option);
+let opt=document.createElement("option");
+opt.value=t;
+opt.text=t;
+trainSelect.appendChild(opt);
 });
 
 stations.sort().forEach(s=>{
-let option=document.createElement("option");
-option.value=s;
-option.text=s;
-stationSelect.appendChild(option);
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+stationSelect.appendChild(opt);
 });
 
 }
@@ -109,6 +168,7 @@ let station=document.getElementById("stationList").value;
 let result=data.filter(d=>d.station_name==station);
 
 display(result);
+showNextArrivals(result);
 
 }
 
@@ -117,15 +177,37 @@ function display(rows){
 let html="<tr><th>Train</th><th>Station</th><th>Arrival</th><th>Departure</th></tr>";
 
 rows.forEach(r=>{
+
 html+=`<tr>
 <td>${r.train_no}</td>
 <td>${r.station_name}</td>
-<td>${r.arrival}</td>
-<td>${r.departure}</td>
+<td>${r.arrival || "-"}</td>
+<td>${r.departure || "-"}</td>
 </tr>`;
+
 });
 
 document.getElementById("result").innerHTML=html;
+
+}
+
+function showNextArrivals(rows){
+
+let board=document.getElementById("arrivalBoard");
+
+board.innerHTML="";
+
+rows.slice(0,5).forEach(r=>{
+
+let div=document.createElement("div");
+
+div.className="arrival";
+
+div.innerHTML=`🚆 Train ${r.train_no} arriving at ${r.arrival}`;
+
+board.appendChild(div);
+
+});
 
 }
 
