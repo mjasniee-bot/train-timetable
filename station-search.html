@@ -122,7 +122,7 @@ let currentMinutes=now.getHours()*60+now.getMinutes();
 
 let parts=arrival.split(":");
 
-let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+let arrivalMinutes=parseInt(parts[0])*180+parseInt(parts[1]);
 
 return arrivalMinutes-currentMinutes;
 
