@@ -47,12 +47,10 @@ color:yellow;
 font-weight:bold;
 }
 
-.clock{
-position:absolute;
-top:20px;
-right:40px;
-font-size:24px;
+button{
+margin-right:10px;
 }
+
 </style>
 
 </head>
@@ -65,11 +63,10 @@ font-size:24px;
 <a href="timetable.html"><button>Timetable</button></a>
 <a href="station-board.html"><button>Station Board</button></a>
 <a href="station-search.html"><button>Station Search</button></a>
+<a href="station-countdown.html"><button>Next Arrivals</button></a>
 <a href="pids.html"><button>PIDS</button></a>
 
 </div>
-
-<div class="clock" id="clock"></div>
 
 <h1>STATION TRAIN SEARCH</h1>
 
@@ -84,7 +81,9 @@ font-size:24px;
 <th>TRAIN</th>
 <th>STATION</th>
 <th>ARRIVAL</th>
-<th>MIN</th>
+<th>MIN ARR</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
 </tr>
 </thead>
 
@@ -122,17 +121,29 @@ select.appendChild(opt);
 
 }
 
-function getMinutes(arrival){
+function getMinutes(time){
+
+if(!time) return "-";
 
 let now=new Date();
 
 let currentMinutes=now.getHours()*60+now.getMinutes();
 
-let parts=arrival.split(":");
+let parts=time.split(":");
 
-let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+let targetMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
 
-return arrivalMinutes-currentMinutes;
+return targetMinutes-currentMinutes;
+
+}
+
+function getEventTime(row){
+
+if(row.arrival && row.arrival!="-"){
+return row.arrival;
+}
+
+return row.departure;
 
 }
 
@@ -141,17 +152,23 @@ function searchStation(){
 let station=document.getElementById("stationList").value;
 
 let rows=data
-.filter(d=>d.station_name==station && d.arrival)
+.filter(d=>d.station_name==station)
 .map(d=>{
+
+let eventTime=getEventTime(d);
 
 return{
 ...d,
-minutes:getMinutes(d.arrival)
+eventTime:eventTime,
+minutesEvent:getMinutes(eventTime),
+minutesArrival:getMinutes(d.arrival),
+minutesDeparture:getMinutes(d.departure)
 }
 
 })
-.filter(d=>d.minutes>=0 && d.minutes<=300)
-.sort((a,b)=>a.minutes-b.minutes);
+
+.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=180)
+.sort((a,b)=>a.minutesEvent-b.minutesEvent);
 
 let html="";
 
@@ -161,8 +178,10 @@ html+=`
 <tr class="${i==0?'next':''}">
 <td>${r.train_no}</td>
 <td>${r.station_name}</td>
-<td>${r.arrival}</td>
-<td>${r.minutes}</td>
+<td>${r.arrival||"-"}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
 </tr>
 `;
 
@@ -171,17 +190,6 @@ html+=`
 document.getElementById("board").innerHTML=html;
 
 }
-
-function updateClock(){
-
-let now=new Date();
-
-document.getElementById("clock").innerHTML=
-now.toLocaleTimeString();
-
-}
-
-setInterval(updateClock,1000);
 
 setInterval(searchStation,60000);
 
