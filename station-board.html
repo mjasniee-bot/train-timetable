@@ -96,7 +96,7 @@ data=json;
 renderBoard();
 });
 
-function getMinutes(arrival){
+/*function getMinutes(arrival){
 
 let now=new Date();
 
@@ -108,7 +108,7 @@ let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
 
 return arrivalMinutes-currentMinutes;
 
-}
+}*/
 
 function getMinutes(time){
 
@@ -138,8 +138,8 @@ minutesDeparture:getMinutes(d.departure)
 }
 })
 
-.filter(d=>d.minutes>=0)
-.sort((a,b)=>a.minutes-b.minutes)
+.filter(d=>d.minutesArrival>=0)
+.sort((a,b)=>a.minutesArrival-b.minutesArrival)
 .slice(0,10);
 
 let html="";
