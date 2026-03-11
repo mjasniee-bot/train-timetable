@@ -115,15 +115,14 @@ function renderBoard(){
 let board=document.getElementById("board");
 
 let rows=data
-.filter(d=>d.arrival)
+.filter(d=>d.arrival && d.station_name && d.station_name!="Unknown")
 .map(d=>{
 return{
 ...d,
 minutesArrival:getMinutes(d.arrival),
-minutesDeparture:getMinutes(d.departure)
+minutesDeparture: d.departure ? getMinutes(d.departure) : "-"
 }
 })
-
 .filter(d=>d.minutesArrival>=0)
 .sort((a,b)=>a.minutesArrival-b.minutesArrival)
 .slice(0,10);
