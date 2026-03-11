@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Station Arrival Board</title>
+
+<style>
+
+body{
+background:black;
+color:#00ff9c;
+font-family:monospace;
+padding:30px;
+}
+
+h1{
+text-align:center;
+font-size:40px;
+margin-bottom:30px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:28px;
+}
+
+th{
+text-align:left;
+border-bottom:2px solid #00ff9c;
+padding:10px;
+}
+
+td{
+padding:10px;
+border-bottom:1px solid #033;
+}
+
+.next{
+color:yellow;
+font-weight:bold;
+}
+
+.clock{
+position:absolute;
+top:20px;
+right:40px;
+font-size:24px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div style="margin-bottom:20px">
+
+<a href="index.html"><button>🏠 Home</button></a>
+<a href="timetable.html"><button>Timetable</button></a>
+<a href="station-board.html"><button>Station Board</button></a>
+<a href="station-search.html"><button>Station Search</button></a>
+<a href="pids.html"><button>PIDS</button></a>
+
+</div>
+
+<div class="clock" id="clock"></div>
+
+<h1>STATION ARRIVAL BOARD</h1>
+
+<table>
+
+<thead>
+<tr>
+<th>TRAIN</th>
+<th>STATION</th>
+<th>ARRIVAL</th>
+<th>MIN</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[];
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>{
+data=json;
+renderBoard();
+});
+
+function getMinutes(time){
+
+let now=new Date();
+
+let currentMinutes=now.getHours()*60+now.getMinutes();
+
+let parts=time.split(":");
+
+let targetMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+
+return targetMinutes-currentMinutes;
+
+}
+
+function renderBoard(){
+
+let board=document.getElementById("board");
+
+let rows=data
+.filter(d=>d.arrival)
+.map(d=>{
+return{
+...d,
+minutesArrival:getMinutes(d.arrival),
+minutesDeparture:getMinutes(d.departure)
+}
+})
+
+.filter(d=>d.minutes>=0)
+.sort((a,b)=>a.minutes-b.minutes)
+.slice(0,10);
+
+let html="";
+
+rows.forEach((r,i)=>{
+
+html+=`
+<tr class="${i==0?'next':''}">
+<td>${r.train_no}</td>
+<td>${r.station_name}</td>
+<td>${r.arrival}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
+</tr>
+`;
+
+});
+
+board.innerHTML=html;
+
+}
+
+function updateClock(){
+
+let now=new Date();
+
+document.getElementById("clock").innerHTML=
+now.toLocaleTimeString();
+
+}
+
+setInterval(updateClock,1000);
+
+setInterval(renderBoard,30000);
+
+</script>
+
+</body>
+</html>
