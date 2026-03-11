@@ -54,6 +54,10 @@ right:40px;
 font-size:24px;
 }
 
+button{
+margin-right:10px;
+}
+
 </style>
 
 </head>
@@ -153,6 +157,17 @@ return row.departure;
 
 }
 
+function getDestination(trainNo){
+
+let stations=data
+.filter(d=>d.train_no==trainNo)
+.map(d=>d.station_name)
+.filter(s=>s && s!="Unknown");
+
+return stations[stations.length-1];
+
+}
+
 function showBoard(){
 
 let station=document.getElementById("stationList").value;
@@ -165,6 +180,7 @@ let eventTime=getEventTime(d);
 
 return{
 ...d,
+destination:getDestination(d.train_no),
 eventTime:eventTime,
 minutesEvent:getMinutes(eventTime),
 minutesArrival:getMinutes(d.arrival),
@@ -184,7 +200,7 @@ rows.forEach((r,i)=>{
 html+=`
 <tr class="${i==0?'next':''}">
 <td>${r.train_no}</td>
-<td>${r.destination||"-"}</td>
+<td>${r.destination}</td>
 <td>${r.arrival||"-"}</td>
 <td>${r.minutesArrival}</td>
 <td>${r.departure||"-"}</td>
@@ -208,6 +224,7 @@ now.toLocaleTimeString();
 }
 
 setInterval(updateClock,1000);
+
 setInterval(showBoard,30000);
 
 </script>
