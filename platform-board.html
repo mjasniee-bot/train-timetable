@@ -201,7 +201,7 @@ minutesDeparture:getMinutes(d.departure)
 }
 
 })
-.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=180)
+.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=300)
 .sort((a,b)=>a.minutesEvent-b.minutesEvent)
 .slice(0,10);
 
