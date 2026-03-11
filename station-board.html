@@ -76,8 +76,6 @@ font-size:24px;
 <th>STATION</th>
 <th>ARRIVAL</th>
 <th>MIN</th>
-<th>DEPARTURE</th>
-<th>MIN DEP</th>
 </tr>
 </thead>
 
@@ -96,7 +94,7 @@ data=json;
 renderBoard();
 });
 
-/*function getMinutes(arrival){
+function getMinutes(arrival){
 
 let now=new Date();
 
@@ -108,20 +106,6 @@ let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
 
 return arrivalMinutes-currentMinutes;
 
-}*/
-
-function getMinutes(time){
-
-let now=new Date();
-
-let currentMinutes=now.getHours()*60+now.getMinutes();
-
-let parts=time.split(":");
-
-let targetMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
-
-return targetMinutes-currentMinutes;
-
 }
 
 function renderBoard(){
@@ -131,15 +115,15 @@ let board=document.getElementById("board");
 let rows=data
 .filter(d=>d.arrival)
 .map(d=>{
+
 return{
 ...d,
-minutesArrival:getMinutes(d.arrival),
-minutesDeparture:getMinutes(d.departure)
+minutes:getMinutes(d.arrival)
 }
-})
 
-.filter(d=>d.minutesArrival>=0)
-.sort((a,b)=>a.minutesArrival-b.minutesArrival)
+})
+.filter(d=>d.minutes>=0)
+.sort((a,b)=>a.minutes-b.minutes)
 .slice(0,10);
 
 let html="";
@@ -151,9 +135,7 @@ html+=`
 <td>${r.train_no}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival}</td>
-<td>${r.minutesArrival}</td>
-<td>${r.departure||"-"}</td>
-<td>${r.minutesDeparture}</td>
+<td>${r.minutes}</td>
 </tr>
 `;
 
