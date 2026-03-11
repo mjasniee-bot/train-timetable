@@ -28,7 +28,7 @@ margin-bottom:20px;
 table{
 width:100%;
 border-collapse:collapse;
-font-size:26px;
+font-size:28px;
 }
 
 th{
@@ -66,7 +66,7 @@ margin-right:10px;
 
 <div style="margin-bottom:20px">
 
-<a href="index.html"><button>?? Home</button></a>
+<a href="index.html"><button>🏠 Home</button></a>
 <a href="timetable.html"><button>Timetable</button></a>
 <a href="station-board3.html"><button>Station Board</button></a>
 <a href="station-search2.html"><button>Station Search</button></a>
@@ -89,7 +89,6 @@ margin-right:10px;
 <thead>
 <tr>
 <th>TRAIN</th>
-<th>ORIGIN</th>
 <th>DESTINATION</th>
 <th>ARRIVAL</th>
 <th>MIN ARR</th>
@@ -169,17 +168,6 @@ return stations[stations.length-1];
 
 }
 
-function getOrigin(trainNo){
-
-let stations=data
-.filter(d=>d.train_no==trainNo)
-.map(d=>d.station_name)
-.filter(s=>s && s!="Unknown");
-
-return stations[0];
-
-}
-
 function showBoard(){
 
 let station=document.getElementById("stationList").value;
@@ -192,7 +180,6 @@ let eventTime=getEventTime(d);
 
 return{
 ...d,
-origin:getOrigin(d.train_no),
 destination:getDestination(d.train_no),
 eventTime:eventTime,
 minutesEvent:getMinutes(eventTime),
@@ -201,7 +188,8 @@ minutesDeparture:getMinutes(d.departure)
 }
 
 })
-.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=180)
+
+.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=300)
 .sort((a,b)=>a.minutesEvent-b.minutesEvent)
 .slice(0,10);
 
@@ -212,7 +200,6 @@ rows.forEach((r,i)=>{
 html+=`
 <tr class="${i==0?'next':''}">
 <td>${r.train_no}</td>
-<td>${r.origin}</td>
 <td>${r.destination}</td>
 <td>${r.arrival||"-"}</td>
 <td>${r.minutesArrival}</td>
