@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Station Train Search</title>
+
+<style>
+
+body{
+background:black;
+color:#00ff9c;
+font-family:monospace;
+padding:30px;
+}
+
+h1{
+text-align:center;
+font-size:36px;
+margin-bottom:30px;
+}
+
+select{
+padding:10px;
+font-size:20px;
+margin-bottom:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:26px;
+}
+
+th{
+border-bottom:2px solid #00ff9c;
+padding:10px;
+text-align:left;
+}
+
+td{
+padding:10px;
+border-bottom:1px solid #033;
+}
+
+.next{
+color:yellow;
+font-weight:bold;
+}
+
+.clock{
+position:absolute;
+top:20px;
+right:40px;
+font-size:24px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div style="margin-bottom:20px">
+
+<a href="index.html"><button>🏠 Home</button></a>
+<a href="timetable.html"><button>Timetable</button></a>
+<a href="station-board.html"><button>Station Board</button></a>
+<a href="station-search.html"><button>Station Search</button></a>
+<a href="pids.html"><button>PIDS</button></a>
+
+</div>
+
+<div class="clock" id="clock"></div>
+
+<h1>STATION TRAIN SEARCH</h1>
+
+<select id="stationList"></select>
+
+<button onclick="searchStation()">Search</button>
+
+<table>
+
+<thead>
+<tr>
+<th>TRAIN</th>
+<th>STATION</th>
+<th>ARRIVAL</th>
+<th>MIN</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[];
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>{
+data=json;
+populateStations();
+});
+
+function populateStations(){
+
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)];
+
+let select=document.getElementById("stationList");
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+select.appendChild(opt);
+});
+
+}
+
+function getMinutes(arrival){
+
+let now=new Date();
+
+let currentMinutes=now.getHours()*60+now.getMinutes();
+
+let parts=arrival.split(":");
+
+let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+
+return arrivalMinutes-currentMinutes;
+
+}
+
+function searchStation(){
+
+let station=document.getElementById("stationList").value;
+
+let rows=data
+.filter(d=>d.station_name==station && d.arrival)
+.map(d=>{
+
+return{
+...d,
+minutes:getMinutes(d.arrival)
+}
+
+})
+.filter(d=>d.minutes>=0 && d.minutes<=300)
+.sort((a,b)=>a.minutes-b.minutes);
+
+let html="";
+
+rows.forEach((r,i)=>{
+
+html+=`
+<tr class="${i==0?'next':''}">
+<td>${r.train_no}</td>
+<td>${r.station_name}</td>
+<td>${r.arrival}</td>
+<td>${r.minutes}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("board").innerHTML=html;
+
+}
+
+function updateClock(){
+
+let now=new Date();
+
+document.getElementById("clock").innerHTML=
+now.toLocaleTimeString();
+
+}
+
+setInterval(updateClock,1000);
+
+setInterval(searchStation,60000);
+
+</script>
+
+</body>
+</html>
