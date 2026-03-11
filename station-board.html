@@ -76,6 +76,8 @@ font-size:24px;
 <th>STATION</th>
 <th>ARRIVAL</th>
 <th>MIN</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
 </tr>
 </thead>
 
@@ -108,6 +110,20 @@ return arrivalMinutes-currentMinutes;
 
 }
 
+function getMinutes(time){
+
+let now=new Date();
+
+let currentMinutes=now.getHours()*60+now.getMinutes();
+
+let parts=time.split(":");
+
+let targetMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+
+return targetMinutes-currentMinutes;
+
+}
+
 function renderBoard(){
 
 let board=document.getElementById("board");
@@ -115,13 +131,13 @@ let board=document.getElementById("board");
 let rows=data
 .filter(d=>d.arrival)
 .map(d=>{
-
 return{
 ...d,
-minutes:getMinutes(d.arrival)
+minutesArrival:getMinutes(d.arrival),
+minutesDeparture:getMinutes(d.departure)
 }
-
 })
+
 .filter(d=>d.minutes>=0)
 .sort((a,b)=>a.minutes-b.minutes)
 .slice(0,10);
@@ -135,7 +151,9 @@ html+=`
 <td>${r.train_no}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival}</td>
-<td>${r.minutes}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
 </tr>
 `;
 
