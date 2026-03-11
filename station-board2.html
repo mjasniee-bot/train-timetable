@@ -124,8 +124,8 @@ minutesDeparture:getMinutes(d.departure)
 }
 })
 
-.filter(d=>d.minutes>=0)
-.sort((a,b)=>a.minutes-b.minutes)
+.filter(d=>d.minutesArrival>=0)
+.sort((a,b)=>a.minutesArrival-b.minutesArrival)
 .slice(0,10);
 
 let html="";
