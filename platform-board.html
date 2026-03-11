@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Platform Passenger Board</title>
+
+<style>
+
+body{
+background:black;
+color:#00ff9c;
+font-family:monospace;
+padding:30px;
+}
+
+h1{
+text-align:center;
+font-size:40px;
+margin-bottom:30px;
+}
+
+select{
+padding:10px;
+font-size:20px;
+margin-bottom:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:28px;
+}
+
+th{
+border-bottom:2px solid #00ff9c;
+padding:10px;
+text-align:left;
+}
+
+td{
+padding:10px;
+border-bottom:1px solid #033;
+}
+
+.next{
+color:yellow;
+font-weight:bold;
+}
+
+.clock{
+position:absolute;
+top:20px;
+right:40px;
+font-size:24px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div style="margin-bottom:20px">
+
+<a href="index.html"><button>🏠 Home</button></a>
+<a href="timetable.html"><button>Timetable</button></a>
+<a href="station-board.html"><button>Station Board</button></a>
+<a href="station-search.html"><button>Station Search</button></a>
+<a href="station-countdown.html"><button>Next Arrivals</button></a>
+<a href="platform-board.html"><button>Platform Board</button></a>
+<a href="pids.html"><button>PIDS</button></a>
+
+</div>
+
+<div class="clock" id="clock"></div>
+
+<h1>PLATFORM PASSENGER BOARD</h1>
+
+<select id="stationList"></select>
+
+<button onclick="showBoard()">Show</button>
+
+<table>
+
+<thead>
+<tr>
+<th>TRAIN</th>
+<th>DESTINATION</th>
+<th>ARRIVAL</th>
+<th>MIN ARR</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[];
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>{
+data=json;
+populateStations();
+});
+
+function populateStations(){
+
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)];
+
+let select=document.getElementById("stationList");
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+select.appendChild(opt);
+});
+
+}
+
+function getMinutes(time){
+
+if(!time) return "-";
+
+let now=new Date();
+
+let currentMinutes=now.getHours()*60+now.getMinutes();
+
+let parts=time.split(":");
+
+let targetMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+
+return targetMinutes-currentMinutes;
+
+}
+
+function getEventTime(row){
+
+if(row.arrival && row.arrival!="-"){
+return row.arrival;
+}
+
+return row.departure;
+
+}
+
+function showBoard(){
+
+let station=document.getElementById("stationList").value;
+
+let rows=data
+.filter(d=>d.station_name==station)
+.map(d=>{
+
+let eventTime=getEventTime(d);
+
+return{
+...d,
+eventTime:eventTime,
+minutesEvent:getMinutes(eventTime),
+minutesArrival:getMinutes(d.arrival),
+minutesDeparture:getMinutes(d.departure)
+}
+
+})
+
+.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=180)
+.sort((a,b)=>a.minutesEvent-b.minutesEvent)
+.slice(0,10);
+
+let html="";
+
+rows.forEach((r,i)=>{
+
+html+=`
+<tr class="${i==0?'next':''}">
+<td>${r.train_no}</td>
+<td>${r.destination||"-"}</td>
+<td>${r.arrival||"-"}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("board").innerHTML=html;
+
+}
+
+function updateClock(){
+
+let now=new Date();
+
+document.getElementById("clock").innerHTML=
+now.toLocaleTimeString();
+
+}
+
+setInterval(updateClock,1000);
+setInterval(showBoard,30000);
+
+</script>
+
+</body>
+</html>
