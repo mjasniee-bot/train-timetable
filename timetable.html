@@ -71,42 +71,14 @@ tr:nth-child(even){
 background:#222;
 }
 
-.additionalTrain{
-background:#5c4a00;
-}
-
 .cancelledTrain{
 background:#5a0000;
-}
-
-.trainLink{
-cursor:pointer;
-color:#00ffcc;
-font-weight:bold;
-}
-
-.trainLink:hover{
-text-decoration:underline;
 }
 
 .note{
 margin-top:10px;
 color:#aaa;
 font-size:12px;
-}
-
-#routePopup{
-display:none;
-position:fixed;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-background:#222;
-padding:20px;
-border:1px solid #00ffcc;
-width:400px;
-max-height:500px;
-overflow:auto;
 }
 
 </style>
@@ -164,7 +136,6 @@ overflow:auto;
 <thead>
 <tr>
 <th>Train</th>
-<th>Seq</th>
 <th>Station</th>
 <th>Arrival</th>
 <th>Departure</th>
@@ -178,16 +149,6 @@ overflow:auto;
 
 <div class="note">
 * Additional Train
-</div>
-
-<div id="routePopup">
-
-<h3 id="routeTitle"></h3>
-
-<div id="routeStations"></div>
-
-<button onclick="closeRoute()">Close</button>
-
 </div>
 
 <script>
@@ -393,10 +354,6 @@ trainDisplay=r.train_no+"*"
 
 let rowClass=""
 
-if(r.train_service=="A"){
-rowClass="additionalTrain"
-}
-
 if(r.train_running=="X"){
 rowClass="cancelledTrain"
 }
@@ -407,8 +364,7 @@ tr.className=rowClass
 
 tr.innerHTML=`
 
-<td class="trainLink" onclick="showRoute('${r.train_no}')">${trainDisplay}</td>
-<td>${r.tmt_seq_no}</td>
+<td>${trainDisplay}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival || "-"}</td>
 <td>${r.departure || "-"}</td>
@@ -419,43 +375,6 @@ tr.innerHTML=`
 tbody.appendChild(tr)
 
 })
-
-}
-
-
-// SHOW ROUTE
-function showRoute(trainNo){
-
-const route=data
-.filter(d=>d.train_no==trainNo)
-.filter(d=>d.station_name!="Unknown")
-
-route.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
-
-const origin=route[0].station_name
-const destination=route[route.length-1].station_name
-
-document.getElementById("routeTitle").innerText=trainNo+" : "+origin+" ? "+destination
-
-let html="<ul>"
-
-route.forEach(r=>{
-html+="<li>"+r.tmt_seq_no+" - "+r.station_name+"</li>"
-})
-
-html+="</ul>"
-
-document.getElementById("routeStations").innerHTML=html
-
-document.getElementById("routePopup").style.display="block"
-
-}
-
-
-// CLOSE ROUTE
-function closeRoute(){
-
-document.getElementById("routePopup").style.display="none"
 
 }
 
