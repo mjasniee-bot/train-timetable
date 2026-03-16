@@ -172,15 +172,18 @@ loadData()
 // POPULATE LOV
 function populateLOV(){
 
-const trainSet=new Set()
+const trainMap={}
 const stationSet=new Set()
 
 data.forEach(d=>{
 
 if(d.station_name!="Unknown"){
 
-trainSet.add(d.train_no)
 stationSet.add(d.station_name)
+
+if(!trainMap[d.train_no]){
+trainMap[d.train_no]=d.train_service
+}
 
 }
 
@@ -189,19 +192,31 @@ stationSet.add(d.station_name)
 const trainSelect=document.getElementById("trainSelect")
 const stationSelect=document.getElementById("stationSelect")
 
-Array.from(trainSet).sort().forEach(t=>{
+
+// TRAIN LOV
+Object.keys(trainMap).sort().forEach(train=>{
+
+let display=train
+
+if(trainMap[train]=="A"){
+display=train+"*"
+}
 
 let opt=document.createElement("option")
-opt.value=t
-opt.text=t
+
+opt.value=train
+opt.text=display
 
 trainSelect.appendChild(opt)
 
 })
 
+
+// STATION LOV
 Array.from(stationSet).sort().forEach(s=>{
 
 let opt=document.createElement("option")
+
 opt.value=s
 opt.text=s
 
@@ -275,11 +290,14 @@ const notRunningTrain=document.getElementById("notRunningTrain").checked
 
 let results=data
 
+
 // REMOVE UNKNOWN
 results=results.filter(d=>d.station_name!="Unknown")
 
+
 // VALIDITY
 results=filterByValidity(results)
+
 
 // SERVICE FILTER
 results=results.filter(d=>{
@@ -291,6 +309,7 @@ return false
 
 })
 
+
 // RUNNING FILTER
 results=results.filter(d=>{
 
@@ -301,10 +320,12 @@ return false
 
 })
 
+
 // TRAIN FILTER
 if(trainNo){
 results=results.filter(d=>d.train_no==trainNo)
 }
+
 
 // STATION FILTER
 if(station){
@@ -333,6 +354,7 @@ return 0
 
 }
 
+
 renderTable(results)
 
 }
@@ -342,6 +364,7 @@ renderTable(results)
 function renderTable(rows){
 
 const tbody=document.querySelector("#resultTable tbody")
+
 tbody.innerHTML=""
 
 rows.forEach(r=>{
