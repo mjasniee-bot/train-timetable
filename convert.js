@@ -3,122 +3,110 @@ const fs = require("fs");
 
 const workbook = XLSX.readFile("Timetable_Master v1.xlsx");
 
-// read sheets
 const timetable = XLSX.utils.sheet_to_json(
-  workbook.Sheets["Timetable_Master v1"],
-  { defval: null }
+workbook.Sheets["Timetable_Master v1"],
+{defval:null}
 );
 
 const trains = XLSX.utils.sheet_to_json(
-  workbook.Sheets["Train_Master"],
-  { defval: null }
+workbook.Sheets["Train_Master"],
+{defval:null}
 );
 
 const locations = XLSX.utils.sheet_to_json(
-  workbook.Sheets["Location"],
-  { defval: null }
+workbook.Sheets["Location"],
+{defval:null}
 );
 
 
-// =========================
-// BUILD LOOKUP TABLE
-// =========================
+// TRAIN MAP
+const trainMap={}
 
-// train lookup
-const trainMap = {};
+trains.forEach(t=>{
 
-trains.forEach(t => {
+trainMap[String(t.TNM_NUMBER).trim()]={
 
-trainMap[String(t.TNM_NUMBER).trim()] = {
-
-train_service: t.Train_service || "N",
-train_running: t.Train_Running || "R"
-
-};
-
-});
-
-// location lookup
-const locationMap = {};
-
-locations.forEach(l => {
-
-locationMap[String(l.LCN_CODE).trim()] = l.LCN_NAME;
-
-});
-
-
-// =========================
-// FORMAT FUNCTIONS
-// =========================
-
-function formatTime(value){
-
-if(value === null || value === "") return null;
-
-const str = value.toString().padStart(4,"0");
-
-return str.slice(0,2)+":"+str.slice(2);
+train_service:t.Train_service || "N",
+train_running:t.Train_Running || "R"
 
 }
 
-function formatDate(value){
+})
 
-if(!value) return null;
 
-const d = XLSX.SSF.parse_date_code(value);
+// LOCATION MAP
+const locationMap={}
 
-return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+locations.forEach(l=>{
+
+locationMap[String(l.LCN_CODE).trim()]=l.LCN_NAME
+
+})
+
+
+// FORMAT TIME
+function formatTime(v){
+
+if(v===null || v==="") return null
+
+const s=v.toString().padStart(4,"0")
+
+return s.slice(0,2)+":"+s.slice(2)
 
 }
 
 
-// =========================
-// MAIN LOOP
-// =========================
+// FORMAT DATE
+function formatDate(v){
 
-const data = [];
+if(!v) return null
 
-timetable.forEach(row => {
+const d=XLSX.SSF.parse_date_code(v)
 
-const trainNo = String(row.TMT_TNM_NUMBER).trim();
+return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`
 
-const stationCode = String(row.TMT_LCN_CODE).trim();
+}
 
-const trainInfo = trainMap[trainNo] || {};
+
+const data=[]
+
+timetable.forEach(row=>{
+
+const trainNo=String(row.TMT_TNM_NUMBER).trim()
+const stationCode=String(row.TMT_LCN_CODE).trim()
+
+const trainInfo=trainMap[trainNo] || {}
 
 data.push({
 
-train_no: trainNo,
+train_no:trainNo,
 
-station_code: stationCode,
+tmt_seq_no:row.TMT_SEQ_NO,   // ⭐ IMPORTANT
 
-station_name: locationMap[stationCode] || "Unknown",
+station_code:stationCode,
 
-arrival: formatTime(row.TMT_ARRIVAL_TIME),
+station_name:locationMap[stationCode] || "Unknown",
 
-departure: formatTime(row.TMT_DEPARTURE_TIME),
+arrival:formatTime(row.TMT_ARRIVAL_TIME),
 
-train_service: trainInfo.train_service || "N",
+departure:formatTime(row.TMT_DEPARTURE_TIME),
 
-train_running: trainInfo.train_running || "R",
+train_service:trainInfo.train_service || "N",
 
-valid_from: formatDate(row.TMT_VALID_FROM),
+train_running:trainInfo.train_running || "R",
 
-valid_to: formatDate(row.TMT_VALID_TO)
+valid_from:formatDate(row.TMT_VALID_FROM),
 
-});
+valid_to:formatDate(row.TMT_VALID_TO)
 
-});
+})
 
+})
 
-// =========================
-// EXPORT JSON
-// =========================
 
 fs.writeFileSync(
 "data.json",
-JSON.stringify(data, null, 2)
-);
+JSON.stringify(data,null,2)
+)
 
-console.log("✅ JSON generated successfully");
+console.log("✅ data.json generated with sequence")

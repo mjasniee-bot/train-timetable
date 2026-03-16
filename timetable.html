@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 
 <head>
@@ -70,10 +71,42 @@ tr:nth-child(even){
 background:#222;
 }
 
+.additionalTrain{
+background:#5c4a00;
+}
+
+.cancelledTrain{
+background:#5a0000;
+}
+
+.trainLink{
+cursor:pointer;
+color:#00ffcc;
+font-weight:bold;
+}
+
+.trainLink:hover{
+text-decoration:underline;
+}
+
 .note{
 margin-top:10px;
 color:#aaa;
 font-size:12px;
+}
+
+#routePopup{
+display:none;
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+background:#222;
+padding:20px;
+border:1px solid #00ffcc;
+width:400px;
+max-height:500px;
+overflow:auto;
 }
 
 </style>
@@ -84,17 +117,11 @@ font-size:12px;
 
 <nav>
 
-<a href="index.html">Home</a>
-<a href="timetable.html">Timetable</a>
-<a href="station-board.html">Station Board</a>
-<a href="station-search.html">Station Search</a>
-<a href="platform-board.html">Platform Board</a>
-<a href="pids.html">PIDS</a>
+<a href="index.html">Home</a> <a href="timetable.html">Timetable</a> <a href="station-board.html">Station Board</a> <a href="station-search.html">Station Search</a> <a href="platform-board.html">Platform Board</a> <a href="pids.html">PIDS</a>
 
 </nav>
 
 <h1>Train Timetable</h1>
-
 
 <select id="trainSelect">
 <option value="">Select Train</option>
@@ -105,7 +132,6 @@ font-size:12px;
 </select>
 
 <button onclick="searchTrain()">Search</button>
-
 
 <div class="filterBox">
 
@@ -119,7 +145,7 @@ font-size:12px;
 <input type="checkbox" id="additionalTrain"> Additional (A)
 </label>
 
-&nbsp;&nbsp;
+  
 
 <b>Train Running:</b>
 
@@ -133,12 +159,12 @@ font-size:12px;
 
 </div>
 
-
 <table id="resultTable">
 
 <thead>
 <tr>
 <th>Train</th>
+<th>Seq</th>
 <th>Station</th>
 <th>Arrival</th>
 <th>Departure</th>
@@ -154,6 +180,15 @@ font-size:12px;
 * Additional Train
 </div>
 
+<div id="routePopup">
+
+<h3 id="routeTitle"></h3>
+
+<div id="routeStations"></div>
+
+<button onclick="closeRoute()">Close</button>
+
+</div>
 
 <script>
 
@@ -163,8 +198,8 @@ let data=[]
 // LOAD DATA
 async function loadData(){
 
-const res = await fetch("data.json")
-data = await res.json()
+const res=await fetch("data.json")
+data=await res.json()
 
 populateLOV()
 
@@ -176,8 +211,8 @@ loadData()
 // POPULATE LOV
 function populateLOV(){
 
-const trainSet = new Set()
-const stationSet = new Set()
+const trainSet=new Set()
+const stationSet=new Set()
 
 data.forEach(d=>{
 
@@ -195,7 +230,7 @@ const stationSelect=document.getElementById("stationSelect")
 
 Array.from(trainSet).sort().forEach(t=>{
 
-const opt=document.createElement("option")
+let opt=document.createElement("option")
 opt.value=t
 opt.text=t
 trainSelect.appendChild(opt)
@@ -204,7 +239,7 @@ trainSelect.appendChild(opt)
 
 Array.from(stationSet).sort().forEach(s=>{
 
-const opt=document.createElement("option")
+let opt=document.createElement("option")
 opt.value=s
 opt.text=s
 stationSelect.appendChild(opt)
@@ -241,13 +276,13 @@ const notRunningTrain=document.getElementById("notRunningTrain").checked
 
 let results=data
 
-// validity
+// VALID DATE
 results=results.filter(d=>isValidTrain(d))
 
-// remove unknown
+// REMOVE UNKNOWN
 results=results.filter(d=>d.station_name!="Unknown")
 
-// service filter
+// SERVICE FILTER
 results=results.filter(d=>{
 
 if(d.train_service=="N" && normalTrain) return true
@@ -257,7 +292,7 @@ return false
 
 })
 
-// running filter
+// RUNNING FILTER
 results=results.filter(d=>{
 
 if(d.train_running=="R" && runningTrain) return true
@@ -267,21 +302,30 @@ return false
 
 })
 
-// train filter
+// TRAIN FILTER
 if(trainNo){
 
 results=results.filter(d=>d.train_no==trainNo)
 
 }
 
-// station filter
+// STATION FILTER
 if(station){
 
 results=results.filter(d=>d.station_name==station)
 
 }
 
-// sorting
+
+// SORTING
+if(trainNo){
+
+results.sort((a,b)=>a.tmt_seq_no - b.tmt_seq_no)
+
+}
+
+else{
+
 results.sort((a,b)=>{
 
 if(a.arrival && b.arrival)
@@ -293,6 +337,9 @@ return a.departure.localeCompare(b.departure)
 return 0
 
 })
+
+}
+
 
 renderTable(results)
 
@@ -313,11 +360,24 @@ if(r.train_service=="A"){
 trainDisplay=r.train_no+"*"
 }
 
+let rowClass=""
+
+if(r.train_service=="A"){
+rowClass="additionalTrain"
+}
+
+if(r.train_running=="X"){
+rowClass="cancelledTrain"
+}
+
 const tr=document.createElement("tr")
+
+tr.className=rowClass
 
 tr.innerHTML=`
 
-<td>${trainDisplay}</td>
+<td class="trainLink" onclick="showRoute('${r.train_no}')">${trainDisplay}</td>
+<td>${r.tmt_seq_no}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival || "-"}</td>
 <td>${r.departure || "-"}</td>
@@ -328,6 +388,45 @@ tr.innerHTML=`
 tbody.appendChild(tr)
 
 })
+
+}
+
+
+// SHOW ROUTE
+function showRoute(trainNo){
+
+const route=data
+.filter(d=>d.train_no==trainNo)
+.filter(d=>d.station_name!="Unknown")
+
+route.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
+const origin=route[0].station_name
+const destination=route[route.length-1].station_name
+
+document.getElementById("routeTitle").innerText=trainNo+" : "+origin+" ? "+destination
+
+let html="<ul>"
+
+route.forEach(r=>{
+
+html+="<li>"+r.tmt_seq_no+" - "+r.station_name+"</li>"
+
+})
+
+html+="</ul>"
+
+document.getElementById("routeStations").innerHTML=html
+
+document.getElementById("routePopup").style.display="block"
+
+}
+
+
+// CLOSE ROUTE
+function closeRoute(){
+
+document.getElementById("routePopup").style.display="none"
 
 }
 
