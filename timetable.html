@@ -1,43 +1,73 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 
+<meta charset="UTF-8">
 <title>Train Timetable</title>
 
 <style>
 
 body{
 font-family:Arial;
-background:#020617;
+background:#111;
 color:white;
-text-align:center;
-padding:30px;
+padding:20px;
 }
 
-select{
-padding:10px;
-margin:10px;
-width:250px;
+h1{
+color:#00ffcc;
+}
+
+nav{
+margin-bottom:20px;
+}
+
+nav a{
+color:white;
+margin-right:15px;
+text-decoration:none;
+font-weight:bold;
+}
+
+nav a:hover{
+color:#00ffcc;
+}
+
+input{
+padding:8px;
+margin-right:10px;
 }
 
 button{
-padding:10px 20px;
-background:#22c55e;
-border:none;
-color:white;
+padding:8px 15px;
 cursor:pointer;
 }
 
-table{
-margin:auto;
-margin-top:30px;
-border-collapse:collapse;
-width:80%;
+.filterBox{
+margin-top:15px;
+margin-bottom:10px;
 }
 
-td,th{
-border-bottom:1px solid #334155;
-padding:10px;
+table{
+border-collapse:collapse;
+width:100%;
+margin-top:20px;
+}
+
+th,td{
+border:1px solid #444;
+padding:8px;
+text-align:center;
+}
+
+th{
+background:#00ffcc;
+color:black;
+}
+
+tr:nth-child(even){
+background:#222;
 }
 
 </style>
@@ -46,128 +76,222 @@ padding:10px;
 
 <body>
 
-<a href="index.html"><button>🏠 Home</button></a>
-<a href="timetable.html"><button>Timetable</button></a>
-<a href="station-board3.html"><button>Station Board</button></a>
-<a href="station-search2.html"><button>Station Search</button></a>
-<!--<a href="station-countdown.html"><button>Next Arrivals</button></a>-->
-<a href="platform-board.html"><button>Platform Board</button></a>
-<!--<a href="pids.html"><button>PIDS</button></a>-->
+<nav>
+
+<a href="index.html">Home</a>
+<a href="timetable.html">Timetable</a>
+<a href="station-board.html">Station Board</a>
+<a href="station-search.html">Station Search</a>
+<a href="platform-board.html">Platform Board</a>
+<a href="pids.html">PIDS</a>
+
+</nav>
 
 <h1>Train Timetable</h1>
 
-<select id="trainList">
-<option>Select Train</option>
-</select>
+<input id="trainInput" placeholder="Train Number">
+<input id="stationInput" placeholder="Station Name">
 
-<button onclick="searchTrain()">Search Train</button>
+<button onclick="searchTrain()">Search</button>
 
-<br><br>
+<div class="filterBox">
 
-<select id="stationList">
-<option>Select Station</option>
-</select>
+<b>Train Service:</b>
 
-<button onclick="searchStation()">Search Station</button>
+<label>
+<input type="checkbox" id="normalTrain" checked> Normal (N)
+</label>
 
-<table id="result"></table>
+<label>
+<input type="checkbox" id="additionalTrain"> Additional (A)
+</label>
+
+&nbsp;&nbsp;
+
+<b>Train Running:</b>
+
+<label>
+<input type="checkbox" id="runningTrain" checked> Running (R)
+</label>
+
+<label>
+<input type="checkbox" id="notRunningTrain"> Not Running (X)
+</label>
+
+</div>
+
+
+<table id="resultTable">
+
+<thead>
+
+<tr>
+<th>Train</th>
+<th>Station</th>
+<th>Arrival</th>
+<th>Departure</th>
+<th>Service</th>
+<th>Status</th>
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+</table>
+
 
 <script>
 
-let data=[];
+let data=[]
 
-fetch("data.json")
-.then(res=>res.json())
-.then(json=>{
-data=json;
-populate();
-});
 
-function populate(){
+// =====================
+// LOAD JSON
+// =====================
 
-let trains=[...new Set(data.map(d=>d.train_no))];
-let stations=[...new Set(
-data
-.filter(d=>d.station_name && d.station_name!="Unknown")
-.map(d=>d.station_name)
-)];
-//let stations=[...new Set(data.map(d=>d.station_name))];
+async function loadData(){
 
-let train=document.getElementById("trainList");
-let station=document.getElementById("stationList");
+const res = await fetch("data.json")
 
-trains.sort().forEach(t=>{
-let opt=document.createElement("option");
-opt.value=t;
-opt.text=t;
-train.appendChild(opt);
-});
-
-stations.sort().forEach(s=>{
-let opt=document.createElement("option");
-opt.value=s;
-opt.text=s;
-station.appendChild(opt);
-});
+data = await res.json()
 
 }
+
+loadData()
+
+
+// =====================
+// VALID DATE CHECK
+// =====================
+
+function isValidTrain(train){
+
+const today = new Date()
+
+const from = new Date(train.valid_from)
+
+const to = new Date(train.valid_to)
+
+return today >= from && today <= to
+
+}
+
+
+// =====================
+// SEARCH FUNCTION
+// =====================
 
 function searchTrain(){
 
-let t=document.getElementById("trainList").value;
+const trainNo = document.getElementById("trainInput").value.trim()
 
-let rows=data.filter(d=>d.train_no==t);
+const station = document.getElementById("stationInput").value.trim().toUpperCase()
 
-display(rows);
+const normalTrain = document.getElementById("normalTrain").checked
+const additionalTrain = document.getElementById("additionalTrain").checked
+
+const runningTrain = document.getElementById("runningTrain").checked
+const notRunningTrain = document.getElementById("notRunningTrain").checked
+
+
+let results = data
+
+
+// filter timetable validity
+results = results.filter(d => isValidTrain(d))
+
+
+// filter service type
+results = results.filter(d => {
+
+if(d.train_service=="N" && normalTrain) return true
+if(d.train_service=="A" && additionalTrain) return true
+
+return false
+
+})
+
+
+// filter running status
+results = results.filter(d => {
+
+if(d.train_running=="R" && runningTrain) return true
+if(d.train_running=="X" && notRunningTrain) return true
+
+return false
+
+})
+
+
+// filter train number
+if(trainNo){
+
+results = results.filter(d => d.train_no == trainNo)
 
 }
 
-function searchStation(){
 
-let s=document.getElementById("stationList").value;
+// filter station
+if(station){
 
-let rows=data
-.filter(d=>d.station_name==s)
-.sort((a,b)=>{
-
-let arrivalA=(a.arrival||"99:99").replace(":","");
-let arrivalB=(b.arrival||"99:99").replace(":","");
-
-if(arrivalA!==arrivalB){
-return arrivalA-arrivalB;
-}
-
-let depA=(a.departure||"99:99").replace(":","");
-let depB=(b.departure||"99:99").replace(":","");
-
-return depA-depB;
-
-});
-
-display(rows);
+results = results.filter(d => d.station_name.includes(station))
 
 }
 
-function display(rows){
 
-let html="<tr><th>Train</th><th>Station</th><th>Arrival</th><th>Departure</th></tr>";
+// sorting
+results.sort((a,b)=>{
+
+if(a.arrival && b.arrival)
+return a.arrival.localeCompare(b.arrival)
+
+if(a.departure && b.departure)
+return a.departure.localeCompare(b.departure)
+
+return 0
+
+})
+
+
+renderTable(results)
+
+}
+
+
+// =====================
+// RENDER TABLE
+// =====================
+
+function renderTable(rows){
+
+const tbody = document.querySelector("#resultTable tbody")
+
+tbody.innerHTML=""
 
 rows.forEach(r=>{
 
-html+=`<tr>
+const tr = document.createElement("tr")
+
+tr.innerHTML = `
+
 <td>${r.train_no}</td>
 <td>${r.station_name}</td>
-<td>${r.arrival||"-"}</td>
-<td>${r.departure||"-"}</td>
-</tr>`;
+<td>${r.arrival || "-"}</td>
+<td>${r.departure || "-"}</td>
+<td>${r.train_service}</td>
+<td>${r.train_running}</td>
 
-});
+`
 
-document.getElementById("result").innerHTML=html;
+tbody.appendChild(tr)
+
+})
 
 }
 
 </script>
 
 </body>
+
 </html>
