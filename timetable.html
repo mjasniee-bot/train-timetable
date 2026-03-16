@@ -164,7 +164,7 @@ overflow:auto;
 <thead>
 <tr>
 <th>Train</th>
-<!--<th>Seq</th>-->
+<th>Seq</th>
 <th>Station</th>
 <th>Arrival</th>
 <th>Departure</th>
@@ -233,6 +233,7 @@ Array.from(trainSet).sort().forEach(t=>{
 let opt=document.createElement("option")
 opt.value=t
 opt.text=t
+
 trainSelect.appendChild(opt)
 
 })
@@ -242,6 +243,7 @@ Array.from(stationSet).sort().forEach(s=>{
 let opt=document.createElement("option")
 opt.value=s
 opt.text=s
+
 stationSelect.appendChild(opt)
 
 })
@@ -249,15 +251,51 @@ stationSelect.appendChild(opt)
 }
 
 
-// VALID DATE
-function isValidTrain(train){
+// VALIDITY FILTER
+function filterByValidity(rows){
 
 const today=new Date()
 
-const from=new Date(train.valid_from)
-const to=new Date(train.valid_to)
+const trainGroups={}
 
-return today>=from && today<=to
+rows.forEach(r=>{
+
+if(!trainGroups[r.train_no]){
+trainGroups[r.train_no]=[]
+}
+
+trainGroups[r.train_no].push(r)
+
+})
+
+let result=[]
+
+Object.values(trainGroups).forEach(group=>{
+
+const validSet=new Set(group.map(g=>g.valid_from))
+
+if(validSet.size>1){
+
+group.forEach(g=>{
+
+const from=new Date(g.valid_from)
+const to=new Date(g.valid_to)
+
+if(today>=from && today<=to){
+result.push(g)
+}
+
+})
+
+}else{
+
+result.push(...group)
+
+}
+
+})
+
+return result
 
 }
 
@@ -276,11 +314,11 @@ const notRunningTrain=document.getElementById("notRunningTrain").checked
 
 let results=data
 
-// VALID DATE
-results=results.filter(d=>isValidTrain(d))
-
 // REMOVE UNKNOWN
 results=results.filter(d=>d.station_name!="Unknown")
+
+// VALIDITY
+results=filterByValidity(results)
 
 // SERVICE FILTER
 results=results.filter(d=>{
@@ -304,27 +342,21 @@ return false
 
 // TRAIN FILTER
 if(trainNo){
-
 results=results.filter(d=>d.train_no==trainNo)
-
 }
 
 // STATION FILTER
 if(station){
-
 results=results.filter(d=>d.station_name==station)
-
 }
 
 
 // SORTING
 if(trainNo){
 
-results.sort((a,b)=>a.tmt_seq_no - b.tmt_seq_no)
+results.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
 
-}
-
-else{
+}else{
 
 results.sort((a,b)=>{
 
@@ -339,7 +371,6 @@ return 0
 })
 
 }
-
 
 renderTable(results)
 
@@ -377,7 +408,7 @@ tr.className=rowClass
 tr.innerHTML=`
 
 <td class="trainLink" onclick="showRoute('${r.train_no}')">${trainDisplay}</td>
-<!--<td>${r.tmt_seq_no}</td>-->
+<td>${r.tmt_seq_no}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival || "-"}</td>
 <td>${r.departure || "-"}</td>
@@ -409,9 +440,7 @@ document.getElementById("routeTitle").innerText=trainNo+" : "+origin+" ? "+desti
 let html="<ul>"
 
 route.forEach(r=>{
-
 html+="<li>"+r.tmt_seq_no+" - "+r.station_name+"</li>"
-
 })
 
 html+="</ul>"
