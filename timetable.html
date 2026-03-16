@@ -34,7 +34,7 @@ nav a:hover{
 color:#00ffcc;
 }
 
-input{
+select{
 padding:8px;
 margin-right:10px;
 }
@@ -46,7 +46,7 @@ cursor:pointer;
 
 .filterBox{
 margin-top:15px;
-margin-bottom:10px;
+margin-bottom:15px;
 }
 
 table{
@@ -89,10 +89,19 @@ background:#222;
 
 <h1>Train Timetable</h1>
 
-<input id="trainInput" placeholder="Train Number">
-<input id="stationInput" placeholder="Station Name">
+
+<!-- LOV SEARCH -->
+
+<select id="trainSelect">
+<option value="">Select Train</option>
+</select>
+
+<select id="stationSelect">
+<option value="">Select Station</option>
+</select>
 
 <button onclick="searchTrain()">Search</button>
+
 
 <div class="filterBox">
 
@@ -130,8 +139,6 @@ background:#222;
 <th>Station</th>
 <th>Arrival</th>
 <th>Departure</th>
-<th>Service</th>
-<th>Status</th>
 </tr>
 
 </thead>
@@ -139,6 +146,7 @@ background:#222;
 <tbody></tbody>
 
 </table>
+
 
 
 <script>
@@ -156,9 +164,55 @@ const res = await fetch("data.json")
 
 data = await res.json()
 
+populateLOV()
+
 }
 
 loadData()
+
+
+
+// =====================
+// POPULATE LOV
+// =====================
+
+function populateLOV(){
+
+const trainSet = new Set()
+const stationSet = new Set()
+
+data.forEach(d=>{
+
+trainSet.add(d.train_no)
+stationSet.add(d.station_name)
+
+})
+
+const trainSelect = document.getElementById("trainSelect")
+const stationSelect = document.getElementById("stationSelect")
+
+
+Array.from(trainSet).sort().forEach(t=>{
+
+const opt=document.createElement("option")
+opt.value=t
+opt.text=t
+trainSelect.appendChild(opt)
+
+})
+
+
+Array.from(stationSet).sort().forEach(s=>{
+
+const opt=document.createElement("option")
+opt.value=s
+opt.text=s
+stationSelect.appendChild(opt)
+
+})
+
+}
+
 
 
 // =====================
@@ -178,15 +232,15 @@ return today >= from && today <= to
 }
 
 
+
 // =====================
 // SEARCH FUNCTION
 // =====================
 
 function searchTrain(){
 
-const trainNo = document.getElementById("trainInput").value.trim()
-
-const station = document.getElementById("stationInput").value.trim().toUpperCase()
+const trainNo = document.getElementById("trainSelect").value
+const station = document.getElementById("stationSelect").value
 
 const normalTrain = document.getElementById("normalTrain").checked
 const additionalTrain = document.getElementById("additionalTrain").checked
@@ -198,11 +252,11 @@ const notRunningTrain = document.getElementById("notRunningTrain").checked
 let results = data
 
 
-// filter timetable validity
+// validity filter
 results = results.filter(d => isValidTrain(d))
 
 
-// filter service type
+// service filter
 results = results.filter(d => {
 
 if(d.train_service=="N" && normalTrain) return true
@@ -213,7 +267,7 @@ return false
 })
 
 
-// filter running status
+// running filter
 results = results.filter(d => {
 
 if(d.train_running=="R" && runningTrain) return true
@@ -224,7 +278,7 @@ return false
 })
 
 
-// filter train number
+// train filter
 if(trainNo){
 
 results = results.filter(d => d.train_no == trainNo)
@@ -232,10 +286,10 @@ results = results.filter(d => d.train_no == trainNo)
 }
 
 
-// filter station
+// station filter
 if(station){
 
-results = results.filter(d => d.station_name.includes(station))
+results = results.filter(d => d.station_name == station)
 
 }
 
@@ -259,6 +313,7 @@ renderTable(results)
 }
 
 
+
 // =====================
 // RENDER TABLE
 // =====================
@@ -279,8 +334,6 @@ tr.innerHTML = `
 <td>${r.station_name}</td>
 <td>${r.arrival || "-"}</td>
 <td>${r.departure || "-"}</td>
-<td>${r.train_service}</td>
-<td>${r.train_running}</td>
 
 `
 
