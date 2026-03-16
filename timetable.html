@@ -142,6 +142,7 @@ font-size:12px;
 <th>Station</th>
 <th>Arrival</th>
 <th>Departure</th>
+<th>Service</th>
 </tr>
 </thead>
 
@@ -154,20 +155,15 @@ font-size:12px;
 </div>
 
 
-
 <script>
 
 let data=[]
 
 
-// =====================
-// LOAD JSON
-// =====================
-
+// LOAD DATA
 async function loadData(){
 
 const res = await fetch("data.json")
-
 data = await res.json()
 
 populateLOV()
@@ -177,11 +173,7 @@ populateLOV()
 loadData()
 
 
-
-// =====================
 // POPULATE LOV
-// =====================
-
 function populateLOV(){
 
 const trainSet = new Set()
@@ -198,9 +190,8 @@ stationSet.add(d.station_name)
 
 })
 
-const trainSelect = document.getElementById("trainSelect")
-const stationSelect = document.getElementById("stationSelect")
-
+const trainSelect=document.getElementById("trainSelect")
+const stationSelect=document.getElementById("stationSelect")
 
 Array.from(trainSet).sort().forEach(t=>{
 
@@ -210,7 +201,6 @@ opt.text=t
 trainSelect.appendChild(opt)
 
 })
-
 
 Array.from(stationSet).sort().forEach(s=>{
 
@@ -224,54 +214,41 @@ stationSelect.appendChild(opt)
 }
 
 
-
-// =====================
-// VALID DATE CHECK
-// =====================
-
+// VALID DATE
 function isValidTrain(train){
 
-const today = new Date()
+const today=new Date()
 
-const from = new Date(train.valid_from)
+const from=new Date(train.valid_from)
+const to=new Date(train.valid_to)
 
-const to = new Date(train.valid_to)
-
-return today >= from && today <= to
+return today>=from && today<=to
 
 }
 
 
-
-// =====================
-// SEARCH FUNCTION
-// =====================
-
+// SEARCH
 function searchTrain(){
 
-const trainNo = document.getElementById("trainSelect").value
-const station = document.getElementById("stationSelect").value
+const trainNo=document.getElementById("trainSelect").value
+const station=document.getElementById("stationSelect").value
 
-const normalTrain = document.getElementById("normalTrain").checked
-const additionalTrain = document.getElementById("additionalTrain").checked
+const normalTrain=document.getElementById("normalTrain").checked
+const additionalTrain=document.getElementById("additionalTrain").checked
 
-const runningTrain = document.getElementById("runningTrain").checked
-const notRunningTrain = document.getElementById("notRunningTrain").checked
+const runningTrain=document.getElementById("runningTrain").checked
+const notRunningTrain=document.getElementById("notRunningTrain").checked
 
+let results=data
 
-let results = data
+// validity
+results=results.filter(d=>isValidTrain(d))
 
-
-// validity filter
-results = results.filter(d => isValidTrain(d))
-
-
-// remove unknown station
-results = results.filter(d => d.station_name!="Unknown")
-
+// remove unknown
+results=results.filter(d=>d.station_name!="Unknown")
 
 // service filter
-results = results.filter(d => {
+results=results.filter(d=>{
 
 if(d.train_service=="N" && normalTrain) return true
 if(d.train_service=="A" && additionalTrain) return true
@@ -280,9 +257,8 @@ return false
 
 })
 
-
 // running filter
-results = results.filter(d => {
+results=results.filter(d=>{
 
 if(d.train_running=="R" && runningTrain) return true
 if(d.train_running=="X" && notRunningTrain) return true
@@ -291,22 +267,19 @@ return false
 
 })
 
-
 // train filter
 if(trainNo){
 
-results = results.filter(d => d.train_no == trainNo)
+results=results.filter(d=>d.train_no==trainNo)
 
 }
-
 
 // station filter
 if(station){
 
-results = results.filter(d => d.station_name == station)
+results=results.filter(d=>d.station_name==station)
 
 }
-
 
 // sorting
 results.sort((a,b)=>{
@@ -321,42 +294,34 @@ return 0
 
 })
 
-
 renderTable(results)
 
 }
 
 
-
-// =====================
 // RENDER TABLE
-// =====================
-
 function renderTable(rows){
 
-const tbody = document.querySelector("#resultTable tbody")
-
+const tbody=document.querySelector("#resultTable tbody")
 tbody.innerHTML=""
 
 rows.forEach(r=>{
 
-let trainDisplay = r.train_no
+let trainDisplay=r.train_no
 
-// add * for additional train
 if(r.train_service=="A"){
-
-trainDisplay = r.train_no + "*"
-
+trainDisplay=r.train_no+"*"
 }
 
-const tr = document.createElement("tr")
+const tr=document.createElement("tr")
 
-tr.innerHTML = `
+tr.innerHTML=`
 
 <td>${trainDisplay}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival || "-"}</td>
 <td>${r.departure || "-"}</td>
+<td>${r.train_service}</td>
 
 `
 
