@@ -70,6 +70,12 @@ tr:nth-child(even){
 background:#222;
 }
 
+.note{
+margin-top:10px;
+color:#aaa;
+font-size:12px;
+}
+
 </style>
 
 </head>
@@ -89,8 +95,6 @@ background:#222;
 
 <h1>Train Timetable</h1>
 
-
-<!-- LOV SEARCH -->
 
 <select id="trainSelect">
 <option value="">Select Train</option>
@@ -133,19 +137,21 @@ background:#222;
 <table id="resultTable">
 
 <thead>
-
 <tr>
 <th>Train</th>
 <th>Station</th>
 <th>Arrival</th>
 <th>Departure</th>
 </tr>
-
 </thead>
 
 <tbody></tbody>
 
 </table>
+
+<div class="note">
+* Additional Train
+</div>
 
 
 
@@ -183,8 +189,12 @@ const stationSet = new Set()
 
 data.forEach(d=>{
 
+if(d.station_name!="Unknown"){
+
 trainSet.add(d.train_no)
 stationSet.add(d.station_name)
+
+}
 
 })
 
@@ -254,6 +264,10 @@ let results = data
 
 // validity filter
 results = results.filter(d => isValidTrain(d))
+
+
+// remove unknown station
+results = results.filter(d => d.station_name!="Unknown")
 
 
 // service filter
@@ -326,11 +340,20 @@ tbody.innerHTML=""
 
 rows.forEach(r=>{
 
+let trainDisplay = r.train_no
+
+// add * for additional train
+if(r.train_service=="A"){
+
+trainDisplay = r.train_no + "*"
+
+}
+
 const tr = document.createElement("tr")
 
 tr.innerHTML = `
 
-<td>${r.train_no}</td>
+<td>${trainDisplay}</td>
 <td>${r.station_name}</td>
 <td>${r.arrival || "-"}</td>
 <td>${r.departure || "-"}</td>
