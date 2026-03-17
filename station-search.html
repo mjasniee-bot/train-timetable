@@ -250,7 +250,14 @@ document.getElementById("board").innerHTML=html
 
 }
 
-setInterval(searchStation,60000)
+// CLOCK
+function updateClock(){
+let now=new Date();
+document.getElementById("clock").innerHTML=now.toLocaleTimeString();
+}
+
+setInterval(updateClock,1000);
+setInterval(showBoard,30000);
 
 </script>
 
