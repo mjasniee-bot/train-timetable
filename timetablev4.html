@@ -1,0 +1,118 @@
+<!-- ONLY SCRIPT PART UPDATED -->
+
+<script>
+
+let data=[]
+
+async function loadData(){
+const res=await fetch("data.json")
+data=await res.json()
+populateLOV()
+}
+loadData()
+
+
+function getMinutes(time){
+if(!time) return 9999
+let now=new Date()
+let current=now.getHours()*60+now.getMinutes()
+let [h,m]=time.split(":")
+return parseInt(h)*60+parseInt(m)-current
+}
+
+
+// REMOVE DUPLICATE TRAIN
+function removeDuplicateTrain(rows){
+
+const unique={}
+
+rows.forEach(r=>{
+
+let time = r.arrival || r.departure
+if(!time) return
+
+let min = getMinutes(time)
+
+if(!unique[r.train_no]){
+unique[r.train_no] = {...r, minutesEvent:min}
+}else if(min < unique[r.train_no].minutesEvent){
+unique[r.train_no] = {...r, minutesEvent:min}
+}
+
+})
+
+return Object.values(unique)
+
+}
+
+
+// SEARCH
+function searchTrain(){
+
+const trainNo=document.getElementById("trainSelect").value
+const station=document.getElementById("stationSelect").value
+
+const normalTrain=document.getElementById("normalTrain").checked
+const additionalTrain=document.getElementById("additionalTrain").checked
+
+const runningTrain=document.getElementById("runningTrain").checked
+const notRunningTrain=document.getElementById("notRunningTrain").checked
+
+let results=data
+
+// remove unknown
+results=results.filter(d=>d.station_name!="Unknown")
+
+// validity
+results=filterByValidity(results)
+
+// service
+results=results.filter(d=>{
+if(d.train_service=="N" && normalTrain) return true
+if(d.train_service=="A" && additionalTrain) return true
+return false
+})
+
+// running
+results=results.filter(d=>{
+if(d.train_running=="R" && runningTrain) return true
+if(d.train_running=="X" && notRunningTrain) return true
+return false
+})
+
+// train filter
+if(trainNo){
+results=results.filter(d=>d.train_no==trainNo)
+}
+
+// station filter
+if(station){
+results=results.filter(d=>d.station_name==station)
+}
+
+
+// SORT
+if(trainNo){
+results.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+}else{
+results.sort((a,b)=>{
+if(a.arrival && b.arrival)
+return a.arrival.localeCompare(b.arrival)
+if(a.departure && b.departure)
+return a.departure.localeCompare(b.departure)
+return 0
+})
+}
+
+
+// ✅ REMOVE DUPLICATE
+if(!trainNo){ // only when not searching specific train
+results = removeDuplicateTrain(results)
+}
+
+
+renderTable(results)
+
+}
+
+</script>
