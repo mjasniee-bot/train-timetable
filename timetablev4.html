@@ -81,6 +81,12 @@ color:#aaa;
 font-size:12px;
 }
 
+.validBox{
+margin-top:10px;
+font-size:14px;
+color:#00ffcc;
+}
+
 </style>
 
 </head>
@@ -104,6 +110,8 @@ font-size:12px;
 </select>
 
 <button onclick="searchTrain()">Search</button>
+
+<div id="validPeriod" class="validBox"></div>
 
 <div class="filterBox">
 
@@ -162,7 +170,6 @@ const res=await fetch("data.json")
 data=await res.json()
 populateLOV()
 }
-
 loadData()
 
 
@@ -240,6 +247,7 @@ Object.values(trainGroups).forEach(group=>{
 
 const validSet=new Set(group.map(g=>g.valid_from))
 
+// multiple timetable → strict filter
 if(validSet.size>1){
 
 group.forEach(g=>{
@@ -251,7 +259,10 @@ result.push(g)
 }
 })
 
-}else{
+}
+
+// single timetable → always show
+else{
 
 result.push(...group)
 
@@ -264,44 +275,21 @@ return result
 }
 
 
-// ================= TIME =================
+// ================= VALID PERIOD DISPLAY =================
 
-function getMinutes(time){
+function updateValidPeriod(rows){
 
-if(!time) return 9999
-
-let now=new Date()
-let current=now.getHours()*60+now.getMinutes()
-
-let [h,m]=time.split(":")
-
-return parseInt(h)*60+parseInt(m)-current
-
+if(rows.length===0){
+document.getElementById("validPeriod").innerText=""
+return
 }
 
+// ambil first row sahaja
+let from=rows[0].valid_from
+let to=rows[0].valid_to
 
-// ================= REMOVE DUPLICATE =================
-
-function removeDuplicateTrain(rows){
-
-const unique={}
-
-rows.forEach(r=>{
-
-let time=r.arrival || r.departure
-if(!time) return
-
-let min=getMinutes(time)
-
-if(!unique[r.train_no]){
-unique[r.train_no]={...r,minutesEvent:min}
-}else if(min < unique[r.train_no].minutesEvent){
-unique[r.train_no]={...r,minutesEvent:min}
-}
-
-})
-
-return Object.values(unique)
+document.getElementById("validPeriod").innerText=
+"Valid Period: " + from + " → " + to
 
 }
 
@@ -355,11 +343,8 @@ results=results.filter(d=>d.station_name==station)
 
 // sorting
 if(trainNo){
-
 results.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
-
 }else{
-
 results.sort((a,b)=>{
 if(a.arrival && b.arrival)
 return a.arrival.localeCompare(b.arrival)
@@ -367,15 +352,11 @@ if(a.departure && b.departure)
 return a.departure.localeCompare(b.departure)
 return 0
 })
-
 }
 
 
-// ✅ REMOVE DUPLICATE ONLY IF NOT SEARCH TRAIN
-if(!trainNo){
-results=removeDuplicateTrain(results)
-}
-
+// update valid period UI
+updateValidPeriod(results)
 
 renderTable(results)
 
