@@ -3,7 +3,7 @@
 <html>
 <head>
 
-<title>Station Arrival Board</title>
+<title>Station Train Search</title>
 
 <style>
 
@@ -16,20 +16,26 @@ padding:30px;
 
 h1{
 text-align:center;
-font-size:40px;
+font-size:36px;
 margin-bottom:30px;
+}
+
+select{
+padding:10px;
+font-size:20px;
+margin-bottom:20px;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
-font-size:28px;
+font-size:26px;
 }
 
 th{
-text-align:left;
 border-bottom:2px solid #00ff9c;
 padding:10px;
+text-align:left;
 }
 
 td{
@@ -42,22 +48,17 @@ color:yellow;
 font-weight:bold;
 }
 
-.clock{
-position:absolute;
-top:20px;
-right:40px;
-font-size:24px;
-}
-
 </style>
 
 </head>
 
 <body>
 
-<div class="clock" id="clock"></div>
+<h1>STATION TRAIN SEARCH</h1>
 
-<h1>STATION ARRIVAL BOARD</h1>
+<select id="stationList"></select>
+
+<button onclick="searchStation()">Search</button>
 
 <table>
 
@@ -84,8 +85,27 @@ fetch("data.json")
 .then(res=>res.json())
 .then(json=>{
 data=json;
-renderBoard();
+populateStations();
 });
+
+function populateStations(){
+
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)];
+
+let select=document.getElementById("stationList");
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+select.appendChild(opt);
+});
+
+}
 
 function getMinutes(time){
 
@@ -108,7 +128,7 @@ return row.arrival || row.departure;
 }
 
 
-// VALIDITY PER TRAIN
+// VALIDITY
 function getValidRows(rows){
 
 const today=new Date()
@@ -129,13 +149,14 @@ return rows
 }
 
 
-function renderBoard(){
+function searchStation(){
 
-// GROUP BY TRAIN
+let station=document.getElementById("stationList").value
+
 let trainGroups={}
 
 data
-.filter(d=>d.station_name && d.station_name!="Unknown")
+.filter(d=>d.station_name==station)
 .forEach(d=>{
 
 if(!trainGroups[d.train_no]){
@@ -172,10 +193,10 @@ minutesDeparture:getMinutes(r.departure)
 
 
 // FILTER TIME
-rows=rows.filter(d=>d.minutesEvent>=0)
+rows=rows.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=300)
 
 
-// REMOVE DUPLICATE (NEAREST)
+// REMOVE DUPLICATE
 let unique={}
 
 rows.forEach(r=>{
@@ -191,8 +212,6 @@ rows=Object.values(unique)
 
 // SORT
 rows.sort((a,b)=>a.minutesEvent-b.minutesEvent)
-
-rows=rows.slice(0,10)
 
 
 // RENDER
@@ -217,14 +236,7 @@ document.getElementById("board").innerHTML=html
 
 }
 
-
-// CLOCK
-function updateClock(){
-document.getElementById("clock").innerHTML=new Date().toLocaleTimeString()
-}
-
-setInterval(updateClock,1000)
-setInterval(renderBoard,30000)
+setInterval(searchStation,60000)
 
 </script>
 
