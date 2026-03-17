@@ -335,6 +335,9 @@ if(trainNo){
 results=results.filter(d=>d.train_no==trainNo)
 }
 
+// THEN VALIDITY
+results=filterByValidity(results)
+
 // station filter
 if(station){
 results=results.filter(d=>d.station_name==station)
