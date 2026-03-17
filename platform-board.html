@@ -273,7 +273,7 @@ minutesDeparture:getMinutes(r.departure),
 
 // STEP 3: filter time window
 rows=rows
-.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=300)
+.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=360)
 
 
 // STEP 4: remove duplicate train (keep nearest)
