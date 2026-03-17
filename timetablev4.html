@@ -1,42 +1,302 @@
-<!-- ONLY SCRIPT PART UPDATED -->
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+<title>Train Timetable</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#111;
+color:white;
+padding:20px;
+}
+
+h1{
+color:#00ffcc;
+}
+
+nav{
+margin-bottom:20px;
+}
+
+nav a{
+color:white;
+margin-right:15px;
+text-decoration:none;
+font-weight:bold;
+}
+
+nav a:hover{
+color:#00ffcc;
+}
+
+select{
+padding:8px;
+margin-right:10px;
+}
+
+button{
+padding:8px 15px;
+cursor:pointer;
+}
+
+.filterBox{
+margin-top:15px;
+margin-bottom:15px;
+}
+
+table{
+border-collapse:collapse;
+width:100%;
+margin-top:20px;
+}
+
+th,td{
+border:1px solid #444;
+padding:8px;
+text-align:center;
+}
+
+th{
+background:#00ffcc;
+color:black;
+}
+
+tr:nth-child(even){
+background:#222;
+}
+
+.cancelledTrain{
+background:#5a0000;
+}
+
+.note{
+margin-top:10px;
+color:#aaa;
+font-size:12px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav>
+
+<a href="index.html">Home</a> <a href="timetable.html">Timetable</a> <a href="station-board.html">Station Board</a> <a href="station-search.html">Station Search</a> <a href="platform-board.html">Platform Board</a> <a href="pids.html">PIDS</a>
+
+</nav>
+
+<h1>Train Timetable</h1>
+
+<select id="trainSelect">
+<option value="">Select Train</option>
+</select>
+
+<select id="stationSelect">
+<option value="">Select Station</option>
+</select>
+
+<button onclick="searchTrain()">Search</button>
+
+<div class="filterBox">
+
+<b>Train Service:</b>
+
+<label>
+<input type="checkbox" id="normalTrain" checked> Normal (N)
+</label>
+
+<label>
+<input type="checkbox" id="additionalTrain"> Additional (A)
+</label>
+
+  
+
+<b>Train Running:</b>
+
+<label>
+<input type="checkbox" id="runningTrain" checked> Running (R)
+</label>
+
+<label>
+<input type="checkbox" id="notRunningTrain"> Not Running (X)
+</label>
+
+</div>
+
+<table id="resultTable">
+
+<thead>
+<tr>
+<th>Train</th>
+<th>Station</th>
+<th>Arrival</th>
+<th>Departure</th>
+<th>Service</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+<div class="note">
+* Additional Train
+</div>
 
 <script>
 
 let data=[]
 
+
+// LOAD DATA
 async function loadData(){
 const res=await fetch("data.json")
 data=await res.json()
 populateLOV()
 }
+
 loadData()
 
 
-function getMinutes(time){
-if(!time) return 9999
-let now=new Date()
-let current=now.getHours()*60+now.getMinutes()
-let [h,m]=time.split(":")
-return parseInt(h)*60+parseInt(m)-current
+// ================= LOV =================
+
+function populateLOV(){
+
+const trainMap={}
+const stationSet=new Set()
+
+data.forEach(d=>{
+
+if(d.station_name!="Unknown"){
+
+stationSet.add(d.station_name)
+
+if(!trainMap[d.train_no]){
+trainMap[d.train_no]=d.train_service
+}
+
+}
+
+})
+
+const trainSelect=document.getElementById("trainSelect")
+const stationSelect=document.getElementById("stationSelect")
+
+Object.keys(trainMap).sort().forEach(train=>{
+
+let display=train
+
+if(trainMap[train]=="A"){
+display=train+"*"
+}
+
+let opt=document.createElement("option")
+opt.value=train
+opt.text=display
+
+trainSelect.appendChild(opt)
+
+})
+
+Array.from(stationSet).sort().forEach(s=>{
+
+let opt=document.createElement("option")
+opt.value=s
+opt.text=s
+
+stationSelect.appendChild(opt)
+
+})
+
 }
 
 
-// REMOVE DUPLICATE TRAIN
+// ================= VALIDITY =================
+
+function filterByValidity(rows){
+
+const today=new Date()
+
+const trainGroups={}
+
+rows.forEach(r=>{
+if(!trainGroups[r.train_no]){
+trainGroups[r.train_no]=[]
+}
+trainGroups[r.train_no].push(r)
+})
+
+let result=[]
+
+Object.values(trainGroups).forEach(group=>{
+
+const validSet=new Set(group.map(g=>g.valid_from))
+
+if(validSet.size>1){
+
+group.forEach(g=>{
+const from=new Date(g.valid_from)
+const to=new Date(g.valid_to)
+
+if(today>=from && today<=to){
+result.push(g)
+}
+})
+
+}else{
+
+result.push(...group)
+
+}
+
+})
+
+return result
+
+}
+
+
+// ================= TIME =================
+
+function getMinutes(time){
+
+if(!time) return 9999
+
+let now=new Date()
+let current=now.getHours()*60+now.getMinutes()
+
+let [h,m]=time.split(":")
+
+return parseInt(h)*60+parseInt(m)-current
+
+}
+
+
+// ================= REMOVE DUPLICATE =================
+
 function removeDuplicateTrain(rows){
 
 const unique={}
 
 rows.forEach(r=>{
 
-let time = r.arrival || r.departure
+let time=r.arrival || r.departure
 if(!time) return
 
-let min = getMinutes(time)
+let min=getMinutes(time)
 
 if(!unique[r.train_no]){
-unique[r.train_no] = {...r, minutesEvent:min}
+unique[r.train_no]={...r,minutesEvent:min}
 }else if(min < unique[r.train_no].minutesEvent){
-unique[r.train_no] = {...r, minutesEvent:min}
+unique[r.train_no]={...r,minutesEvent:min}
 }
 
 })
@@ -46,7 +306,8 @@ return Object.values(unique)
 }
 
 
-// SEARCH
+// ================= SEARCH =================
+
 function searchTrain(){
 
 const trainNo=document.getElementById("trainSelect").value
@@ -60,20 +321,21 @@ const notRunningTrain=document.getElementById("notRunningTrain").checked
 
 let results=data
 
+
 // remove unknown
 results=results.filter(d=>d.station_name!="Unknown")
 
 // validity
 results=filterByValidity(results)
 
-// service
+// service filter
 results=results.filter(d=>{
 if(d.train_service=="N" && normalTrain) return true
 if(d.train_service=="A" && additionalTrain) return true
 return false
 })
 
-// running
+// running filter
 results=results.filter(d=>{
 if(d.train_running=="R" && runningTrain) return true
 if(d.train_running=="X" && notRunningTrain) return true
@@ -91,10 +353,13 @@ results=results.filter(d=>d.station_name==station)
 }
 
 
-// SORT
+// sorting
 if(trainNo){
+
 results.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
 }else{
+
 results.sort((a,b)=>{
 if(a.arrival && b.arrival)
 return a.arrival.localeCompare(b.arrival)
@@ -102,12 +367,13 @@ if(a.departure && b.departure)
 return a.departure.localeCompare(b.departure)
 return 0
 })
+
 }
 
 
-// ✅ REMOVE DUPLICATE
-if(!trainNo){ // only when not searching specific train
-results = removeDuplicateTrain(results)
+// ✅ REMOVE DUPLICATE ONLY IF NOT SEARCH TRAIN
+if(!trainNo){
+results=removeDuplicateTrain(results)
 }
 
 
@@ -115,4 +381,47 @@ renderTable(results)
 
 }
 
+
+// ================= RENDER =================
+
+function renderTable(rows){
+
+const tbody=document.querySelector("#resultTable tbody")
+tbody.innerHTML=""
+
+rows.forEach(r=>{
+
+let trainDisplay=r.train_no
+
+if(r.train_service=="A"){
+trainDisplay=r.train_no+"*"
+}
+
+let rowClass=""
+
+if(r.train_running=="X"){
+rowClass="cancelledTrain"
+}
+
+const tr=document.createElement("tr")
+tr.className=rowClass
+
+tr.innerHTML=`
+<td>${trainDisplay}</td>
+<td>${r.station_name}</td>
+<td>${r.arrival || "-"}</td>
+<td>${r.departure || "-"}</td>
+<td>${r.train_service}</td>
+`
+
+tbody.appendChild(tr)
+
+})
+
+}
+
 </script>
+
+</body>
+
+</html>
