@@ -55,13 +55,23 @@ top:20px;
 right:40px;
 font-size:24px;
 }
-
+button{
+margin-right:10px;
+}
 </style>
 
 </head>
 
 <body>
+<div style="margin-bottom:20px">
 
+<a href="index.html"><button>Home</button></a>
+ <a href="timetable.html"><button>Timetable</button></a> 
+ <a href="station-board.html"><button>Station Board</button></a> 
+ <a href="station-search.html"><button>Station Search</button></a> 
+ <a href="platform-board.html"><button>Platform Board</button></a>
+
+</div>
 <div class="clock" id="clock"></div>
 
 <h1>PLATFORM PASSENGER BOARD</h1>
@@ -93,7 +103,7 @@ let allRows=[]
 let currentPage=0
 
 const PAGE_SIZE = 10
-const TIME_WINDOW = 360 // 6 jam
+const TIME_WINDOW = 600 // 10 jam
 
 
 fetch("data.json")
