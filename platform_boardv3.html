@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+
+<title>Platform Passenger Board</title>
+
+<style>
+
+body{
+background:black;
+color:#00ff9c;
+font-family:monospace;
+padding:30px;
+overflow:hidden;
+}
+
+h1{
+text-align:center;
+font-size:40px;
+margin-bottom:30px;
+}
+
+select{
+padding:10px;
+font-size:20px;
+margin-bottom:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:26px;
+}
+
+th{
+border-bottom:2px solid #00ff9c;
+padding:10px;
+text-align:left;
+}
+
+td{
+padding:10px;
+border-bottom:1px solid #033;
+}
+
+.next{
+color:yellow;
+font-weight:bold;
+}
+
+.clock{
+position:absolute;
+top:20px;
+right:40px;
+font-size:24px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="clock" id="clock"></div>
+
+<h1>PLATFORM PASSENGER BOARD</h1>
+
+<select id="stationList"></select> <button onclick="initBoard()">Show</button>
+
+<table>
+
+<thead>
+<tr>
+<th>TRAIN</th>
+<th>ORIGIN</th>
+<th>DESTINATION</th>
+<th>ARRIVAL</th>
+<th>MIN ARR</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[]
+let allRows=[]
+let currentPage=0
+
+const PAGE_SIZE = 10
+const TIME_WINDOW = 360 // 6 jam
+
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>{
+data=json
+populateStations()
+})
+
+
+// ================= VALIDITY =================
+
+function getValidRows(rows){
+
+const today=new Date()
+const validSet=new Set(rows.map(r=>r.valid_from))
+
+if(validSet.size>1){
+
+return rows.filter(r=>{
+const from=new Date(r.valid_from)
+const to=new Date(r.valid_to)
+return today>=from && today<=to
+})
+
+}
+
+return rows
+
+}
+
+
+// ================= STATION =================
+
+function populateStations(){
+
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)]
+
+let select=document.getElementById("stationList")
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option")
+opt.value=s
+opt.text=s
+select.appendChild(opt)
+})
+
+}
+
+
+// ================= TIME =================
+
+function getMinutes(time){
+
+if(!time) return "-"
+
+let now=new Date()
+let currentMinutes=now.getHours()*60+now.getMinutes()
+
+let [h,m]=time.split(":")
+let target=parseInt(h)*60+parseInt(m)
+
+return target-currentMinutes
+
+}
+
+function getEventTime(row){
+
+return row.arrival || row.departure
+
+}
+
+
+// ================= ROUTE =================
+
+function getRoute(trainNo){
+
+let route=data
+.filter(d=>d.train_no==trainNo)
+.filter(d=>d.station_name && d.station_name!="Unknown")
+
+route.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
+return {
+origin:route[0].station_name,
+destination:route[route.length-1].station_name
+}
+
+}
+
+
+// ================= INIT =================
+
+function initBoard(){
+
+currentPage=0
+prepareData()
+renderPage()
+
+}
+
+
+// ================= PREPARE =================
+
+function prepareData(){
+
+let station=document.getElementById("stationList").value
+
+let trainGroups={}
+
+data
+.filter(d=>d.station_name==station)
+.forEach(d=>{
+
+if(!trainGroups[d.train_no]){
+trainGroups[d.train_no]=[]
+}
+
+trainGroups[d.train_no].push(d)
+
+})
+
+let rows=[]
+
+Object.keys(trainGroups).forEach(trainNo=>{
+
+let group=getValidRows(trainGroups[trainNo])
+
+group.forEach(r=>{
+
+let eventTime=getEventTime(r)
+
+rows.push({
+...r,
+eventTime:eventTime,
+minutesEvent:getMinutes(eventTime),
+minutesArrival:getMinutes(r.arrival),
+minutesDeparture:getMinutes(r.departure),
+...getRoute(trainNo)
+})
+
+})
+
+})
+
+
+// 6 JAM FILTER
+rows=rows.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=TIME_WINDOW)
+
+
+// REMOVE DUPLICATE
+let unique={}
+
+rows.forEach(r=>{
+if(!unique[r.train_no] || r.minutesEvent < unique[r.train_no].minutesEvent){
+unique[r.train_no]=r
+}
+})
+
+allRows=Object.values(unique)
+
+
+// SORT
+allRows.sort((a,b)=>a.minutesEvent-b.minutesEvent)
+
+}
+
+
+// ================= RENDER =================
+
+function renderPage(){
+
+let start=currentPage*PAGE_SIZE
+let end=start+PAGE_SIZE
+
+let rows=allRows.slice(start,end)
+
+let html=""
+
+rows.forEach((r,i)=>{
+
+html+=`
+<tr class="${i==0?'next':''}">
+<td>${r.train_no}${r.train_service=="A"?"*":""}</td>
+<td>${r.origin}</td>
+<td>${r.destination}</td>
+<td>${r.arrival||"-"}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
+</tr>
+`
+
+})
+
+document.getElementById("board").innerHTML=html
+
+
+// NEXT PAGE
+currentPage++
+
+if(currentPage*PAGE_SIZE >= allRows.length){
+currentPage=0
+}
+
+}
+
+
+// ================= AUTO LOOP =================
+
+setInterval(renderPage,5000)
+
+
+// ================= CLOCK =================
+
+function updateClock(){
+document.getElementById("clock").innerHTML=new Date().toLocaleTimeString()
+}
+
+setInterval(updateClock,1000)
+
+</script>
+
+</body>
+</html>
