@@ -24,12 +24,12 @@ table{
 width:100%;
 border-collapse:collapse;
 margin-top:20px;
-font-size:18px;
+font-size:16px;
 }
 
 th,td{
 border:1px solid #00ffcc;
-padding:10px;
+padding:8px;
 text-align:center;
 }
 
@@ -54,18 +54,21 @@ color:white;
 
 <h1>PLATFORM BOARD</h1>
 
-<select id="stationSelect"></select>
-
-<button onclick="loadBoard()">Search</button>
+<select id="stationSelect"></select> <button onclick="loadBoard()">Search</button>
 
 <table>
 
 <thead>
 <tr>
 <th>Train</th>
+<th>Origin</th>
 <th>Destination</th>
 <th>Arrival</th>
+<th>Min</th>
 <th>Departure</th>
+<th>Min</th>
+<th>Service</th>
+<th>Status</th>
 </tr>
 </thead>
 
@@ -94,17 +97,15 @@ init()
 // POPULATE STATION
 function populateStations(){
 
-const stationSet = new Set()
+const stationSet=new Set()
 
 data.forEach(d=>{
-
 if(d.station_name!="Unknown"){
 stationSet.add(d.station_name)
 }
-
 })
 
-const select = document.getElementById("stationSelect")
+const select=document.getElementById("stationSelect")
 
 Array.from(stationSet).sort().forEach(s=>{
 
@@ -119,10 +120,7 @@ select.appendChild(opt)
 }
 
 
-// ======================
 // VALIDITY FILTER
-// ======================
-
 function filterByValidity(rows){
 
 const today=new Date()
@@ -130,13 +128,10 @@ const today=new Date()
 const trainGroups={}
 
 rows.forEach(r=>{
-
 if(!trainGroups[r.train_no]){
 trainGroups[r.train_no]=[]
 }
-
 trainGroups[r.train_no].push(r)
-
 })
 
 let result=[]
@@ -145,24 +140,18 @@ Object.values(trainGroups).forEach(group=>{
 
 const validSet=new Set(group.map(g=>g.valid_from))
 
-// multiple timetable
 if(validSet.size>1){
 
 group.forEach(g=>{
-
 const from=new Date(g.valid_from)
 const to=new Date(g.valid_to)
 
 if(today>=from && today<=to){
 result.push(g)
 }
-
 })
 
-}
-
-// single timetable
-else{
+}else{
 
 result.push(...group)
 
@@ -175,44 +164,75 @@ return result
 }
 
 
-// ======================
-// GET DESTINATION
-// ======================
+// GET ROUTE INFO
+function getRoute(trainNo){
 
-function getDestination(trainNo){
-
-const route = data
+const route=data
 .filter(d=>d.train_no==trainNo)
 .filter(d=>d.station_name!="Unknown")
 
 route.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
 
-return route[route.length-1].station_name
+return {
+origin:route[0].station_name,
+destination:route[route.length-1].station_name
+}
 
 }
 
 
-// ======================
-// LOAD BOARD
-// ======================
+// MINUTES CALC
+function getMinutes(time){
 
+if(!time) return "-"
+
+const now=new Date()
+
+const [h,m]=time.split(":")
+const t=new Date()
+
+t.setHours(h)
+t.setMinutes(m)
+t.setSeconds(0)
+
+const diff=Math.floor((t-now)/60000)
+
+return diff>=0 ? diff : "-"
+
+}
+
+
+// STATUS
+function getStatus(min){
+
+if(min=="-") return ""
+
+if(min<=0) return "Arriving"
+if(min<=5) return "Boarding"
+
+return "On Time"
+
+}
+
+
+// LOAD BOARD
 function loadBoard(){
 
-const station = document.getElementById("stationSelect").value
+const station=document.getElementById("stationSelect").value
 
-let rows = data
+let rows=data
 
 // remove unknown
-rows = rows.filter(d=>d.station_name!="Unknown")
+rows=rows.filter(d=>d.station_name!="Unknown")
 
-// validity filter
-rows = filterByValidity(rows)
+// validity
+rows=filterByValidity(rows)
 
-// filter station
-rows = rows.filter(d=>d.station_name==station)
+// station filter
+rows=rows.filter(d=>d.station_name==station)
 
-// running train only
-rows = rows.filter(d=>d.train_running=="R")
+// running only
+rows=rows.filter(d=>d.train_running=="R")
 
 
 // sort arrival
@@ -231,22 +251,26 @@ render(rows)
 }
 
 
-// ======================
 // RENDER
-// ======================
-
 function render(rows){
 
-const tbody = document.getElementById("board")
+const tbody=document.getElementById("board")
 tbody.innerHTML=""
 
 rows.forEach(r=>{
 
-let trainDisplay = r.train_no
+let trainDisplay=r.train_no
 
 if(r.train_service=="A"){
-trainDisplay = r.train_no + "*"
+trainDisplay=r.train_no+"*"
 }
+
+const route=getRoute(r.train_no)
+
+const arrMin=getMinutes(r.arrival)
+const depMin=getMinutes(r.departure)
+
+const status=getStatus(arrMin)
 
 const tr=document.createElement("tr")
 
@@ -257,9 +281,14 @@ tr.className="cancelled"
 tr.innerHTML=`
 
 <td>${trainDisplay}</td>
-<td>${getDestination(r.train_no)}</td>
+<td>${route.origin}</td>
+<td>${route.destination}</td>
 <td>${r.arrival || "-"}</td>
+<td>${arrMin}</td>
 <td>${r.departure || "-"}</td>
+<td>${depMin}</td>
+<td>${r.train_service}</td>
+<td>${status}</td>
 
 `
 
