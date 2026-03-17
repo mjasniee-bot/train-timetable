@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 
@@ -48,6 +49,10 @@ right:40px;
 font-size:24px;
 }
 
+button{
+margin-right:10px;
+}
+
 </style>
 
 </head>
@@ -56,11 +61,13 @@ font-size:24px;
 
 <div style="margin-bottom:20px">
 
-<a href="index.html"><button>🏠 Home</button></a>
+<a href="index.html"><button>ðŸ  Home</button></a>
 <a href="timetable.html"><button>Timetable</button></a>
 <a href="station-board.html"><button>Station Board</button></a>
 <a href="station-search.html"><button>Station Search</button></a>
-<a href="pids.html"><button>PIDS</button></a>
+<!--<a href="station-countdown.html"><button>Next Arrivals</button></a>-->
+<a href="platform-board.html"><button>Platform Board</button></a>
+<!--<a href="pids.html"><button>PIDS</button></a>-->
 
 </div>
 
@@ -75,7 +82,9 @@ font-size:24px;
 <th>TRAIN</th>
 <th>STATION</th>
 <th>ARRIVAL</th>
-<th>MIN</th>
+<th>MIN ARR</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
 </tr>
 </thead>
 
@@ -94,69 +103,144 @@ data=json;
 renderBoard();
 });
 
-function getMinutes(arrival){
+function getMinutes(time){
+
+if(!time) return "-";
 
 let now=new Date();
 
 let currentMinutes=now.getHours()*60+now.getMinutes();
 
-let parts=arrival.split(":");
+let [h,m]=time.split(":");
 
-let arrivalMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+let targetMinutes=parseInt(h)*60+parseInt(m);
 
-return arrivalMinutes-currentMinutes;
+return targetMinutes-currentMinutes;
 
 }
+
+function getEventTime(row){
+return row.arrival || row.departure;
+}
+
+
+// VALIDITY PER TRAIN
+function getValidRows(rows){
+
+const today=new Date()
+const validSet=new Set(rows.map(r=>r.valid_from))
+
+if(validSet.size>1){
+
+return rows.filter(r=>{
+let from=new Date(r.valid_from)
+let to=new Date(r.valid_to)
+return today>=from && today<=to
+})
+
+}
+
+return rows
+
+}
+
 
 function renderBoard(){
 
-let board=document.getElementById("board");
+// GROUP BY TRAIN
+let trainGroups={}
 
-let rows=data
-.filter(d=>d.arrival)
-.map(d=>{
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.forEach(d=>{
 
-return{
-...d,
-minutes:getMinutes(d.arrival)
+if(!trainGroups[d.train_no]){
+trainGroups[d.train_no]=[]
+}
+
+trainGroups[d.train_no].push(d)
+
+})
+
+let rows=[]
+
+
+// APPLY VALIDITY
+Object.keys(trainGroups).forEach(trainNo=>{
+
+let group=getValidRows(trainGroups[trainNo])
+
+group.forEach(r=>{
+
+let eventTime=getEventTime(r)
+
+rows.push({
+...r,
+eventTime:eventTime,
+minutesEvent:getMinutes(eventTime),
+minutesArrival:getMinutes(r.arrival),
+minutesDeparture:getMinutes(r.departure)
+})
+
+})
+
+})
+
+
+// FILTER TIME
+rows=rows.filter(d=>d.minutesEvent>=0)
+
+
+// REMOVE DUPLICATE (NEAREST)
+let unique={}
+
+rows.forEach(r=>{
+
+if(!unique[r.train_no] || r.minutesEvent < unique[r.train_no].minutesEvent){
+unique[r.train_no]=r
 }
 
 })
-.filter(d=>d.minutes>=0)
-.sort((a,b)=>a.minutes-b.minutes)
-.slice(0,10);
 
-let html="";
+rows=Object.values(unique)
+
+
+// SORT
+rows.sort((a,b)=>a.minutesEvent-b.minutesEvent)
+
+rows=rows.slice(0,10)
+
+
+// RENDER
+let html=""
 
 rows.forEach((r,i)=>{
 
 html+=`
 <tr class="${i==0?'next':''}">
-<td>${r.train_no}</td>
+<td>${r.train_no}${r.train_service=="A"?"*":""}</td>
 <td>${r.station_name}</td>
-<td>${r.arrival}</td>
-<td>${r.minutes}</td>
+<td>${r.arrival||"-"}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
 </tr>
-`;
+`
 
-});
+})
 
-board.innerHTML=html;
+document.getElementById("board").innerHTML=html
 
 }
 
+
+// CLOCK
 function updateClock(){
-
-let now=new Date();
-
-document.getElementById("clock").innerHTML=
-now.toLocaleTimeString();
-
+document.getElementById("clock").innerHTML=new Date().toLocaleTimeString()
 }
 
-setInterval(updateClock,1000);
-
-setInterval(renderBoard,30000);
+setInterval(updateClock,1000)
+setInterval(renderBoard,30000)
 
 </script>
 
