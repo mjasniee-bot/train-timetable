@@ -1,49 +1,62 @@
 <!DOCTYPE html>
 
 <html>
-
 <head>
 
-<meta charset="UTF-8">
-<title>Platform Board</title>
+<title>Platform Passenger Board</title>
 
 <style>
 
 body{
-font-family:Arial;
 background:black;
-color:#00ffcc;
-padding:20px;
+color:#00ff9c;
+font-family:monospace;
+padding:30px;
 }
 
 h1{
 text-align:center;
+font-size:40px;
+margin-bottom:30px;
+}
+
+select{
+padding:10px;
+font-size:20px;
+margin-bottom:20px;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
-margin-top:20px;
-font-size:16px;
-}
-
-th,td{
-border:1px solid #00ffcc;
-padding:8px;
-text-align:center;
+font-size:26px;
 }
 
 th{
-background:#003333;
+border-bottom:2px solid #00ff9c;
+padding:10px;
+text-align:left;
 }
 
-tr:nth-child(even){
-background:#001a1a;
+td{
+padding:10px;
+border-bottom:1px solid #033;
 }
 
-.cancelled{
-background:#550000;
-color:white;
+.next{
+color:yellow;
+font-weight:bold;
+}
+
+.clock{
+position:absolute;
+top:20px;
+right:40px;
+font-size:24px;
+}
+
+button{
+margin-right:10px;
 }
 
 </style>
@@ -52,23 +65,31 @@ color:white;
 
 <body>
 
-<h1>PLATFORM BOARD</h1>
+<div style="margin-bottom:20px">
 
-<select id="stationSelect"></select> <button onclick="loadBoard()">Search</button>
+<a href="index.html"><button>Home</button></a> <a href="timetable.html"><button>Timetable</button></a> <a href="station-board3.html"><button>Station Board</button></a> <a href="station-search2.html"><button>Station Search</button></a> <a href="platform-board.html"><button>Platform Board</button></a>
+
+</div>
+
+<div class="clock" id="clock"></div>
+
+<h1>PLATFORM PASSENGER BOARD</h1>
+
+<select id="stationList"></select>
+
+<button onclick="showBoard()">Show</button>
 
 <table>
 
 <thead>
 <tr>
-<th>Train</th>
-<th>Origin</th>
-<th>Destination</th>
-<th>Arrival</th>
-<th>Min</th>
-<th>Departure</th>
-<th>Min</th>
-<th>Service</th>
-<th>Status</th>
+<th>TRAIN</th>
+<th>ORIGIN</th>
+<th>DESTINATION</th>
+<th>ARRIVAL</th>
+<th>MIN ARR</th>
+<th>DEPARTURE</th>
+<th>MIN DEP</th>
 </tr>
 </thead>
 
@@ -78,98 +99,110 @@ color:white;
 
 <script>
 
-let data=[]
+let data=[];
+
+fetch("data.json")
+.then(res=>res.json())
+.then(json=>{
+data=json;
+populateStations();
+});
 
 
-// LOAD DATA
-async function init(){
+// =========================
+// VALIDITY FILTER (PER TRAIN)
+// =========================
 
-const res = await fetch("data.json")
-data = await res.json()
-
-populateStations()
-
-}
-
-init()
-
-
-// POPULATE STATION
-function populateStations(){
-
-const stationSet=new Set()
-
-data.forEach(d=>{
-if(d.station_name!="Unknown"){
-stationSet.add(d.station_name)
-}
-})
-
-const select=document.getElementById("stationSelect")
-
-Array.from(stationSet).sort().forEach(s=>{
-
-let opt=document.createElement("option")
-opt.value=s
-opt.text=s
-
-select.appendChild(opt)
-
-})
-
-}
-
-
-// VALIDITY FILTER
-function filterByValidity(rows){
+function getValidRows(rows){
 
 const today=new Date()
 
-const trainGroups={}
+const validSet=new Set(rows.map(r=>r.valid_from))
 
-rows.forEach(r=>{
-if(!trainGroups[r.train_no]){
-trainGroups[r.train_no]=[]
-}
-trainGroups[r.train_no].push(r)
-})
-
-let result=[]
-
-Object.values(trainGroups).forEach(group=>{
-
-const validSet=new Set(group.map(g=>g.valid_from))
-
+// multiple timetable
 if(validSet.size>1){
 
-group.forEach(g=>{
-const from=new Date(g.valid_from)
-const to=new Date(g.valid_to)
+return rows.filter(r=>{
 
-if(today>=from && today<=to){
-result.push(g)
-}
-})
+const from=new Date(r.valid_from)
+const to=new Date(r.valid_to)
 
-}else{
-
-result.push(...group)
-
-}
+return today>=from && today<=to
 
 })
 
-return result
+}
+
+// single timetable
+return rows
 
 }
 
 
-// GET ROUTE INFO
+// =========================
+// POPULATE STATIONS
+// =========================
+
+function populateStations(){
+
+let stations=[...new Set(
+data
+.filter(d=>d.station_name && d.station_name!="Unknown")
+.map(d=>d.station_name)
+)];
+
+let select=document.getElementById("stationList");
+
+stations.sort().forEach(s=>{
+let opt=document.createElement("option");
+opt.value=s;
+opt.text=s;
+select.appendChild(opt);
+});
+
+}
+
+
+// =========================
+// TIME FUNCTIONS
+// =========================
+
+function getMinutes(time){
+
+if(!time) return "-";
+
+let now=new Date();
+
+let currentMinutes=now.getHours()*60+now.getMinutes();
+
+let parts=time.split(":");
+
+let targetMinutes=parseInt(parts[0])*60+parseInt(parts[1]);
+
+return targetMinutes-currentMinutes;
+
+}
+
+function getEventTime(row){
+
+if(row.arrival && row.arrival!="-"){
+return row.arrival;
+}
+
+return row.departure;
+
+}
+
+
+// =========================
+// ROUTE INFO
+// =========================
+
 function getRoute(trainNo){
 
-const route=data
+let route=data
 .filter(d=>d.train_no==trainNo)
-.filter(d=>d.station_name!="Unknown")
+.filter(d=>d.station_name && d.station_name!="Unknown")
 
 route.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
 
@@ -181,125 +214,127 @@ destination:route[route.length-1].station_name
 }
 
 
-// MINUTES CALC
-function getMinutes(time){
+// =========================
+// MAIN BOARD FUNCTION
+// =========================
 
-if(!time) return "-"
+function showBoard(){
 
-const now=new Date()
+let station=document.getElementById("stationList").value;
 
-const [h,m]=time.split(":")
-const t=new Date()
+// STEP 1: group by train
+let trainGroups={};
 
-t.setHours(h)
-t.setMinutes(m)
-t.setSeconds(0)
+data
+.filter(d=>d.station_name==station)
+.forEach(d=>{
 
-const diff=Math.floor((t-now)/60000)
-
-return diff>=0 ? diff : "-"
-
+if(!trainGroups[d.train_no]){
+trainGroups[d.train_no]=[]
 }
 
+trainGroups[d.train_no].push(d)
 
-// STATUS
-function getStatus(min){
+});
 
-if(min=="-") return ""
-
-if(min<=0) return "Arriving"
-if(min<=5) return "Boarding"
-
-return "On Time"
-
-}
+let rows=[];
 
 
-// LOAD BOARD
-function loadBoard(){
+// STEP 2: apply validity per train
+Object.keys(trainGroups).forEach(trainNo=>{
 
-const station=document.getElementById("stationSelect").value
+let group=trainGroups[trainNo]
 
-let rows=data
+// apply validity logic
+let validRows=getValidRows(group)
 
-// remove unknown
-rows=rows.filter(d=>d.station_name!="Unknown")
+// ambil row paling relevant (arrival/nearest)
+validRows.forEach(r=>{
 
-// validity
-rows=filterByValidity(rows)
+let eventTime=getEventTime(r)
 
-// station filter
-rows=rows.filter(d=>d.station_name==station)
-
-// running only
-rows=rows.filter(d=>d.train_running=="R")
-
-
-// sort arrival
-rows.sort((a,b)=>{
-
-if(a.arrival && b.arrival)
-return a.arrival.localeCompare(b.arrival)
-
-return 0
+rows.push({
+...r,
+eventTime:eventTime,
+minutesEvent:getMinutes(eventTime),
+minutesArrival:getMinutes(r.arrival),
+minutesDeparture:getMinutes(r.departure),
+...getRoute(trainNo)
+})
 
 })
 
-
-render(rows)
-
-}
+});
 
 
-// RENDER
-function render(rows){
+// STEP 3: filter time window
+rows=rows
+.filter(d=>d.minutesEvent>=0 && d.minutesEvent<=300)
 
-const tbody=document.getElementById("board")
-tbody.innerHTML=""
+
+// STEP 4: remove duplicate train (keep nearest)
+let uniqueTrain={};
 
 rows.forEach(r=>{
 
-let trainDisplay=r.train_no
+if(!uniqueTrain[r.train_no]){
+uniqueTrain[r.train_no]=r
+}else{
 
-if(r.train_service=="A"){
-trainDisplay=r.train_no+"*"
+if(r.minutesEvent < uniqueTrain[r.train_no].minutesEvent){
+uniqueTrain[r.train_no]=r
 }
 
-const route=getRoute(r.train_no)
-
-const arrMin=getMinutes(r.arrival)
-const depMin=getMinutes(r.departure)
-
-const status=getStatus(arrMin)
-
-const tr=document.createElement("tr")
-
-if(r.train_running=="X"){
-tr.className="cancelled"
 }
 
-tr.innerHTML=`
+});
 
-<td>${trainDisplay}</td>
-<td>${route.origin}</td>
-<td>${route.destination}</td>
-<td>${r.arrival || "-"}</td>
-<td>${arrMin}</td>
-<td>${r.departure || "-"}</td>
-<td>${depMin}</td>
-<td>${r.train_service}</td>
-<td>${status}</td>
+rows=Object.values(uniqueTrain)
 
-`
 
-tbody.appendChild(tr)
+// STEP 5: sort
+rows.sort((a,b)=>a.minutesEvent-b.minutesEvent)
 
-})
+rows=rows.slice(0,10)
+
+
+// =========================
+// RENDER
+// =========================
+
+let html="";
+
+rows.forEach((r,i)=>{
+
+html+=`
+<tr class="${i==0?'next':''}">
+<td>${r.train_no}${r.train_service=="A"?"*":""}</td>
+<td>${r.origin}</td>
+<td>${r.destination}</td>
+<td>${r.arrival||"-"}</td>
+<td>${r.minutesArrival}</td>
+<td>${r.departure||"-"}</td>
+<td>${r.minutesDeparture}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("board").innerHTML=html;
 
 }
+
+
+// CLOCK
+function updateClock(){
+let now=new Date();
+document.getElementById("clock").innerHTML=now.toLocaleTimeString();
+}
+
+setInterval(updateClock,1000);
+setInterval(showBoard,30000);
 
 </script>
 
 </body>
-
 </html>
