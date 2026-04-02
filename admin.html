@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PIDS Admin Panel</title>
+
+<style>
+body{
+  background:#111;
+  color:white;
+  font-family:Arial;
+  padding:20px;
+}
+
+h1{
+  color:#00ffcc;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th,td{
+  border:1px solid #444;
+  padding:8px;
+  text-align:center;
+}
+
+button{
+  padding:5px 10px;
+  cursor:pointer;
+}
+
+input{
+  width:60px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>PIDS ADMIN PANEL</h1>
+
+<label>
+<input type="checkbox" id="toggleAdditional"> Show Additional Train
+</label>
+
+<br><br>
+
+<table id="adminTable">
+<thead>
+<tr>
+<th>Train</th>
+<th>Status</th>
+<th>Delay (min)</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<script>
+
+let data=[]
+let liveData={ train_control:{}, settings:{ show_additional:true } }
+
+// LOAD
+async function loadData(){
+
+  const res1 = await fetch("data.json")
+  data = await res1.json()
+
+  try{
+    const res2 = await fetch("live-data.json")
+    liveData = await res2.json()
+  }catch{}
+
+  document.getElementById("toggleAdditional").checked = liveData.settings.show_additional
+
+  renderAdmin()
+
+}
+
+loadData()
+
+
+function renderAdmin(){
+
+  const tbody=document.querySelector("#adminTable tbody")
+  tbody.innerHTML=""
+
+  const trains=[...new Set(data.map(d=>d.train_no))]
+
+  trains.forEach(train=>{
+
+    const control = liveData.train_control[train] || {}
+
+    const tr=document.createElement("tr")
+
+    tr.innerHTML=`
+      <td>${train}</td>
+      <td>
+        <select id="status_${train}">
+          <option value="R" ${control.running==="R"?"selected":""}>Running</option>
+          <option value="X" ${control.running==="X"?"selected":""}>Not Running</option>
+        </select>
+      </td>
+      <td>
+        <input type="number" id="delay_${train}" value="${control.delay_min || 0}">
+      </td>
+      <td>
+        <button onclick="updateTrain('${train}')">Update</button>
+      </td>
+    `
+
+    tbody.appendChild(tr)
+
+  })
+
+}
+
+
+// UPDATE TRAIN
+function updateTrain(train){
+
+  const status = document.getElementById("status_"+train).value
+  const delay = Number(document.getElementById("delay_"+train).value)
+
+  liveData.train_control[train] = {
+    running: status,
+    delay_min: delay
+  }
+
+  saveLiveData()
+
+}
+
+
+// TOGGLE ADDITIONAL
+document.getElementById("toggleAdditional").addEventListener("change",function(){
+
+  liveData.settings.show_additional = this.checked
+  saveLiveData()
+
+})
+
+
+// SAVE (LOCAL)
+function saveLiveData(){
+
+  localStorage.setItem("liveData", JSON.stringify(liveData))
+
+  alert("Updated (Local Mode)")
+
+}
+
+</script>
+
+</body>
+</html>
