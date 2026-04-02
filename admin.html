@@ -1,47 +1,13 @@
 <!DOCTYPE html>
+
 <html>
 <head>
-<meta charset="UTF-8">
-<title>PIDS Admin Panel</title>
-
-<style>
-body{
-  background:#111;
-  color:white;
-  font-family:Arial;
-  padding:20px;
-}
-
-h1{
-  color:#00ffcc;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-th,td{
-  border:1px solid #444;
-  padding:8px;
-  text-align:center;
-}
-
-button{
-  padding:5px 10px;
-  cursor:pointer;
-}
-
-input{
-  width:60px;
-}
-
-</style>
+<title>PIDS Admin</title>
 </head>
 
 <body>
 
-<h1>PIDS ADMIN PANEL</h1>
+<h2>Admin Panel</h2>
 
 <label>
 <input type="checkbox" id="toggleAdditional"> Show Additional Train
@@ -49,112 +15,84 @@ input{
 
 <br><br>
 
-<table id="adminTable">
-<thead>
-<tr>
-<th>Train</th>
-<th>Status</th>
-<th>Delay (min)</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
+<div id="list"></div>
 
 <script>
 
 let data=[]
 let liveData={ train_control:{}, settings:{ show_additional:true } }
 
-// LOAD
-async function loadData(){
+async function load(){
 
-  const res1 = await fetch("data.json")
-  data = await res1.json()
+  const res = await fetch("data.json")
+  data = await res.json()
 
-  try{
-    const res2 = await fetch("live-data.json")
-    liveData = await res2.json()
-  }catch{}
+  const stored = localStorage.getItem("liveData")
+  if(stored){
+    liveData = JSON.parse(stored)
+  }
+
+  render()
+
+}
+
+load()
+
+function render(){
 
   document.getElementById("toggleAdditional").checked = liveData.settings.show_additional
 
-  renderAdmin()
-
-}
-
-loadData()
-
-
-function renderAdmin(){
-
-  const tbody=document.querySelector("#adminTable tbody")
-  tbody.innerHTML=""
-
   const trains=[...new Set(data.map(d=>d.train_no))]
 
-  trains.forEach(train=>{
+  let html=""
 
-    const control = liveData.train_control[train] || {}
+  trains.forEach(t=>{
 
-    const tr=document.createElement("tr")
+    const c = liveData.train_control[t] || {}
 
-    tr.innerHTML=`
-      <td>${train}</td>
-      <td>
-        <select id="status_${train}">
-          <option value="R" ${control.running==="R"?"selected":""}>Running</option>
-          <option value="X" ${control.running==="X"?"selected":""}>Not Running</option>
-        </select>
-      </td>
-      <td>
-        <input type="number" id="delay_${train}" value="${control.delay_min || 0}">
-      </td>
-      <td>
-        <button onclick="updateTrain('${train}')">Update</button>
-      </td>
+    html += `
+    <div>
+      ${t}
+      <select id="s_${t}">
+        <option value="R">Running</option>
+        <option value="X">Stop</option>
+      </select>
+
+      Delay:
+      <input id="d_${t}" type="number" value="${c.delay_min || 0}">
+
+      <button onclick="save('${t}')">Save</button>
+    </div>
     `
-
-    tbody.appendChild(tr)
 
   })
 
+  document.getElementById("list").innerHTML = html
+
 }
 
+function save(train){
 
-// UPDATE TRAIN
-function updateTrain(train){
-
-  const status = document.getElementById("status_"+train).value
-  const delay = Number(document.getElementById("delay_"+train).value)
+  const status = document.getElementById("s_"+train).value
+  const delay = Number(document.getElementById("d_"+train).value)
 
   liveData.train_control[train] = {
     running: status,
     delay_min: delay
   }
 
-  saveLiveData()
-
-}
-
-
-// TOGGLE ADDITIONAL
-document.getElementById("toggleAdditional").addEventListener("change",function(){
-
-  liveData.settings.show_additional = this.checked
-  saveLiveData()
-
-})
-
-
-// SAVE (LOCAL)
-function saveLiveData(){
-
   localStorage.setItem("liveData", JSON.stringify(liveData))
 
-  alert("Updated (Local Mode)")
+  alert("Saved")
 
 }
+
+document.getElementById("toggleAdditional").addEventListener("change", function(){
+
+  liveData.settings.show_additional = this.checked
+  localStorage.setItem("liveData", JSON.stringify(liveData))
+
+})
 
 </script>
 
