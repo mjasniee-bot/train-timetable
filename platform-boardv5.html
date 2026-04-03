@@ -20,6 +20,14 @@ h1{
   font-size:36px;
 }
 
+.clock{
+  position:absolute;
+  top:20px;
+  right:40px;
+  font-size:22px;
+  color:white;
+}
+
 select{
   padding:10px;
   font-size:18px;
@@ -46,7 +54,9 @@ th,td{
 </head>
 
 <body>
+
 <div class="clock" id="clock"></div>
+
 <h1>PLATFORM BOARD (LIVE)</h1>
 
 <select id="station"></select>
@@ -71,9 +81,10 @@ th,td{
 
 let data=[]
 let liveData={}
+let currentRows=[]
 
 
-// ================= LOAD =================
+// ================= LOAD DATA =================
 
 async function loadData(){
 
@@ -89,12 +100,23 @@ async function loadData(){
   }
 
   populateStation()
-  loadBoard()
 
 }
 
 loadData()
+
+// reload data setiap 5 saat
 setInterval(loadData,5000)
+
+
+// ================= CLOCK =================
+
+function updateClock(){
+  const now = new Date()
+  document.getElementById("clock").innerText = now.toLocaleTimeString()
+}
+
+setInterval(updateClock,1000)
 
 
 // ================= STATION =================
@@ -233,9 +255,9 @@ function getStatus(r){
 }
 
 
-// ================= LOAD BOARD =================
+// ================= PREPARE DATA =================
 
-function loadBoard(){
+function prepareRows(){
 
   let station=document.getElementById("station").value
 
@@ -255,7 +277,7 @@ function loadBoard(){
 
   })
 
-  rows=rows.filter(r=>r.minutes>=-120 && r.minutes<=360)
+  rows=rows.filter(r=>r.minutes>=-60 && r.minutes<=360)
 
   let unique={}
   rows.forEach(r=>{
@@ -264,21 +286,22 @@ function loadBoard(){
     }
   })
 
-  let finalRows=Object.values(unique)
-  finalRows.sort((a,b)=>a.minutes-b.minutes)
-
-  render(finalRows)
+  currentRows=Object.values(unique)
 
 }
 
 
 // ================= RENDER =================
 
-function render(rows){
+function render(){
+
+  prepareRows()
+
+  currentRows.sort((a,b)=>a.minutes-b.minutes)
 
   let html=""
 
-  rows.forEach((r,i)=>{
+  currentRows.forEach((r,i)=>{
 
     let cls=""
 
@@ -301,6 +324,12 @@ function render(rows){
   document.getElementById("board").innerHTML=html
 
 }
+
+
+// ================= LIVE RENDER =================
+
+// render setiap 1 saat → LIVE
+setInterval(render,1000)
 
 </script>
 
