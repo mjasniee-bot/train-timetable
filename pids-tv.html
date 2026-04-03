@@ -63,6 +63,11 @@ th{
   animation: blink 1s infinite;
 }
 
+  .gateclosed{
+  color:red;
+  animation: blink 1s infinite;
+}
+
 @keyframes blink{
   50%{opacity:0;}
 }
@@ -236,9 +241,11 @@ function getStatus(r){
 
   if(m<=0) return {text:"DEPARTED", class:""}
 
-  if(m<=3) return {text:"FINAL CALL", class:"finalcall"}
+  if(m<=5) return {text:"GATE CLOSED", class:"gateclosed"}
 
-  if(m<=10) return {text:"BOARDING", class:"boarding"}
+  if(m<=10) return {text:"FINAL CALL", class:"finalcall"}
+
+  if(m<=15) return {text:"BOARDING", class:"boarding"}
 
   return {text:"ON SCHEDULE", class:""}
 
