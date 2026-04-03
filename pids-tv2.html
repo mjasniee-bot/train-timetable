@@ -58,7 +58,8 @@ th{
 
 .next{ color:yellow; font-weight:bold; }
 .delayed{ color:orange; }
-.finalcall{ color:red; animation: blink 1s infinite; }
+.finalcall{ color:yellow; animation: blink 1s infinite; }
+.gateclosed{color:red; animation: blink 1s infinite;}
 .boarding{ color:cyan; }
 .arriving{ color:lime; }
 
@@ -252,9 +253,11 @@ function getStatus(r){
 
   if(m<=0) return {text:"DEPARTED", class:""}
 
-  if(m<=3) return {text:"FINAL CALL", class:"finalcall"}
+  if(m<=5) return {text:"GATE CLOSED", class:"gateclosed"}
 
-  if(m<=10) return {text:"BOARDING", class:"boarding"}
+  if(m<=10) return {text:"FINAL CALL", class:"finalcall"}
+
+  if(m<=15) return {text:"BOARDING", class:"boarding"}
 
   return {text:"ON SCHEDULE", class:""}
 
