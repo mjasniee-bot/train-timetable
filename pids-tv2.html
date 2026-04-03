@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>PIDS TV Display</title>
+
+<style>
+
+body{
+  background:black;
+  color:#00ff9c;
+  font-family:monospace;
+  margin:0;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 30px;
+}
+
+.controls{
+  font-size:16px;
+}
+
+.controls select{
+  padding:5px;
+  font-size:14px;
+}
+
+.clock{
+  font-size:40px;
+  color:white;
+}
+
+h1{
+  text-align:center;
+  font-size:50px;
+  margin:0;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:36px;
+}
+
+th,td{
+  padding:15px;
+}
+
+th{
+  border-bottom:3px solid #00ff9c;
+}
+
+.next{ color:yellow; font-weight:bold; }
+.delayed{ color:orange; }
+.finalcall{ color:red; animation: blink 1s infinite; }
+.boarding{ color:cyan; }
+.arriving{ color:lime; }
+
+@keyframes blink{
+  50%{opacity:0;}
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="topbar">
+
+  <div class="controls">
+    Station:
+    <select id="station"></select>
+
+```
+Window:
+<select id="hours">
+  <option value="1">1h</option>
+  <option value="2">2h</option>
+  <option value="3" selected>3h</option>
+  <option value="4">4h</option>
+  <option value="6">6h</option>
+</select>
+```
+
+  </div>
+
+  <div class="clock" id="clock"></div>
+
+</div>
+
+<h1>DEPARTURES</h1>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Destination</th>
+<th>Time</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[]
+let liveData={}
+
+
+// ================= LOAD =================
+
+async function loadData(){
+
+  const res = await fetch("data.json")
+  data = await res.json()
+
+  const stored = localStorage.getItem("liveData")
+
+  if(stored){
+    liveData = JSON.parse(stored)
+  }else{
+    liveData = { train_control:{}, settings:{ show_additional:true } }
+  }
+
+  populateStations()
+
+}
+
+loadData()
+setInterval(loadData,5000)
+
+
+// ================= CLOCK =================
+
+function updateClock(){
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString()
+}
+
+setInterval(updateClock,1000)
+
+
+// ================= STATION =================
+
+function populateStations(){
+
+  const stations=[...new Set(
+    data.filter(d=>d.station_name!="Unknown")
+        .map(d=>d.station_name)
+  )]
+
+  const sel=document.getElementById("station")
+
+  if(sel.options.length===0){
+    stations.sort().forEach(s=>{
+      sel.innerHTML+=`<option value="${s}">${s}</option>`
+    })
+  }
+
+}
+
+
+// ================= TIME =================
+
+function getMinutes(time){
+
+  if(!time) return 9999
+
+  let now=new Date()
+  let cur=now.getHours()*60+now.getMinutes()
+
+  let [h,m]=time.split(":")
+  return parseInt(h)*60+parseInt(m)-cur
+}
+
+
+// ================= DEST =================
+
+function getDestination(trainNo){
+
+  let route=data
+    .filter(d=>d.train_no==trainNo && d.station_name!="Unknown")
+    .sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
+  return route[route.length-1]?.station_name || "-"
+}
+
+
+// ================= CONTROL =================
+
+function applyLiveControl(rows){
+
+  return rows.filter(r=>{
+
+    const c=liveData.train_control?.[r.train_no]
+
+    if(c?.running==="X") return false
+
+    if(!liveData.settings.show_additional && r.train_service==="A"){
+      return false
+    }
+
+    return true
+
+  }).map(r=>{
+
+    const c=liveData.train_control?.[r.train_no]
+
+    if(c?.delay_min){
+      return {
+        ...r,
+        departure:addMinutes(r.departure,c.delay_min),
+        delayed:true
+      }
+    }
+
+    return r
+
+  })
+
+}
+
+function addMinutes(time,mins){
+
+  if(!time) return time
+
+  let [h,m]=time.split(":").map(Number)
+  let total=h*60+m+mins
+
+  return String(Math.floor(total/60)%24).padStart(2,"0")+":"+
+         String(total%60).padStart(2,"0")
+}
+
+
+// ================= STATUS =================
+
+function getStatus(r){
+
+  if(r.delayed) return {text:"DELAYED", class:"delayed"}
+
+  let m=r.minutes
+
+  if(m<=0) return {text:"DEPARTED", class:""}
+
+  if(m<=3) return {text:"FINAL CALL", class:"finalcall"}
+
+  if(m<=10) return {text:"BOARDING", class:"boarding"}
+
+  return {text:"ON SCHEDULE", class:""}
+
+}
+
+
+// ================= RENDER =================
+
+function render(){
+
+  let station=document.getElementById("station").value
+  let hours=parseInt(document.getElementById("hours").value)
+
+  let rows=data.filter(d=>d.station_name==station)
+
+  rows=applyLiveControl(rows)
+
+  rows=rows.map(r=>({
+    ...r,
+    minutes:getMinutes(r.departure),
+    destination:getDestination(r.train_no)
+  }))
+
+  // FILTER WINDOW
+  rows=rows.filter(r=>r.minutes>=-10 && r.minutes<=hours*60)
+
+  // REMOVE DUPLICATE
+  let unique={}
+  rows.forEach(r=>{
+    if(!unique[r.train_no] || r.minutes < unique[r.train_no].minutes){
+      unique[r.train_no]=r
+    }
+  })
+
+  let finalRows=Object.values(unique)
+  finalRows.sort((a,b)=>a.minutes-b.minutes)
+
+  let html=""
+
+  finalRows.forEach((r,i)=>{
+
+    let status=getStatus(r)
+
+    html+=`
+    <tr class="${i==0?'next':''}">
+      <td>${r.train_no}</td>
+      <td>${r.destination}</td>
+      <td>${r.departure||"-"}</td>
+      <td class="${status.class}">${status.text}</td>
+    </tr>
+    `
+  })
+
+  document.getElementById("board").innerHTML=html
+
+}
+
+
+// ================= LOOP =================
+
+// render live setiap 1s
+setInterval(render,1000)
+
+</script>
+
+</body>
+</html>
