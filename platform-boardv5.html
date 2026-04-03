@@ -46,7 +46,7 @@ th,td{
 </head>
 
 <body>
-
+<div class="clock" id="clock"></div>
 <h1>PLATFORM BOARD (LIVE)</h1>
 
 <select id="station"></select>
@@ -255,7 +255,7 @@ function loadBoard(){
 
   })
 
-  rows=rows.filter(r=>r.minutes>=-60 && r.minutes<=360)
+  rows=rows.filter(r=>r.minutes>=-120 && r.minutes<=360)
 
   let unique={}
   rows.forEach(r=>{
