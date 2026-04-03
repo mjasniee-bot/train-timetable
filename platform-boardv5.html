@@ -4,9 +4,10 @@
 
 <head>
 <meta charset="UTF-8">
-<title>Platform Board (Manual)</title>
+<title>Platform Board (Live)</title>
 
 <style>
+
 body{
   background:black;
   color:#00ff9c;
@@ -19,7 +20,7 @@ h1{
   font-size:36px;
 }
 
-select,button{
+select{
   padding:10px;
   font-size:18px;
 }
@@ -46,9 +47,9 @@ th,td{
 
 <body>
 
-<h1>PLATFORM BOARD (MANUAL)</h1>
+<h1>PLATFORM BOARD (LIVE)</h1>
 
-<select id="station"></select> <button onclick="loadBoard()">Show</button>
+<select id="station"></select>
 
 <table>
 <thead>
@@ -88,10 +89,12 @@ async function loadData(){
   }
 
   populateStation()
+  loadBoard()
 
 }
 
 loadData()
+setInterval(loadData,5000)
 
 
 // ================= STATION =================
@@ -105,9 +108,11 @@ function populateStation(){
 
   let sel=document.getElementById("station")
 
-  stations.sort().forEach(s=>{
-    sel.innerHTML+=`<option value="${s}">${s}</option>`
-  })
+  if(sel.options.length===0){
+    stations.sort().forEach(s=>{
+      sel.innerHTML+=`<option value="${s}">${s}</option>`
+    })
+  }
 
 }
 
@@ -137,8 +142,8 @@ function getRoute(trainNo){
     .sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
 
   return {
-    origin:route[0]?.station_name || "-",
-    destination:route[route.length-1]?.station_name || "-"
+    origin:route[0]?.station_name,
+    destination:route[route.length-1]?.station_name
   }
 
 }
@@ -190,6 +195,41 @@ function addMinutes(time,mins){
 
   return String(Math.floor(total/60)%24).padStart(2,"0")+":"+
          String(total%60).padStart(2,"0")
+}
+
+
+// ================= STATUS =================
+
+function getStatus(r){
+
+  if(r.delayed) return "Delayed"
+
+  let minutes = r.minutes
+
+  if(r.station_name === r.origin){
+
+    if(minutes <= 0) return "Departed"
+    if(minutes <= 5) return "Final Call"
+    if(minutes <= 10) return "Boarding"
+
+  }
+
+  else if(r.station_name === r.destination){
+
+    if(minutes <= 0) return "Arrived"
+    if(minutes <= 5) return "Arriving"
+
+  }
+
+  else{
+
+    if(minutes <= 0) return "Departed"
+    if(minutes <= 5) return "Approaching"
+
+  }
+
+  return "On Schedule"
+
 }
 
 
@@ -246,11 +286,6 @@ function render(rows){
     else if(r.delayed) cls="delayed"
     else if(i==0) cls="next"
 
-    let status="On Time"
-
-    if(r.delayed) status="Delayed"
-    if(r.minutes<0) status="Departed"
-
     html+=`
     <tr class="${cls}">
       <td>${r.train_no}${r.train_service=="A"?"*":""}</td>
@@ -258,7 +293,7 @@ function render(rows){
       <td>${r.destination}</td>
       <td>${r.arrival||"-"}</td>
       <td>${r.departure||"-"}</td>
-      <td>${status}</td>
+      <td>${getStatus(r)}</td>
     </tr>
     `
   })
