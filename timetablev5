@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Train Timetable</title>
+
+<style>
+body{font-family:Arial;background:#111;color:white;padding:20px;}
+h1{color:#00ffcc;}
+select,button{padding:8px;margin:5px;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th,td{border:1px solid #444;padding:8px;text-align:center;}
+th{background:#00ffcc;color:black;}
+.delayed{color:yellow;font-weight:bold;}
+</style>
+
+</head>
+
+<body>
+
+<h1>Train Timetable</h1>
+
+<select id="trainSelect">
+<option value="">Train</option>
+</select>
+
+<select id="stationSelect">
+<option value="">Station</option>
+</select>
+
+<button onclick="searchTrain()">Search</button>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Station</th>
+<th>Arrival</th>
+<th>Departure</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<script>
+
+let data=[]
+let liveData={}
+
+async function loadData(){
+
+  const res = await fetch("data.json")
+  data = await res.json()
+
+  const stored = localStorage.getItem("liveData")
+
+  if(stored){
+    liveData = JSON.parse(stored)
+  }else{
+    liveData = { train_control:{}, settings:{ show_additional:true } }
+  }
+
+  populate()
+
+}
+
+loadData()
+setInterval(loadData,5000)
+
+
+// ================= LOV =================
+
+function populate(){
+
+  const trains=[...new Set(data.map(d=>d.train_no))]
+  const stations=[...new Set(data.map(d=>d.station_name).filter(s=>s!="Unknown"))]
+
+  const tSel=document.getElementById("trainSelect")
+  const sSel=document.getElementById("stationSelect")
+
+  tSel.innerHTML='<option value="">Train</option>'
+  sSel.innerHTML='<option value="">Station</option>'
+
+  trains.forEach(t=>{
+    tSel.innerHTML+=`<option value="${t}">${t}</option>`
+  })
+
+  stations.forEach(s=>{
+    sSel.innerHTML+=`<option value="${s}">${s}</option>`
+  })
+
+}
+
+
+// ================= SEARCH =================
+
+function searchTrain(){
+
+  let trainNo=document.getElementById("trainSelect").value
+  let station=document.getElementById("stationSelect").value
+
+  let results=data.filter(d=>d.station_name!="Unknown")
+
+  if(trainNo){
+    results=results.filter(d=>d.train_no==trainNo)
+    results.sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+  }
+
+  if(station){
+    results=results.filter(d=>d.station_name==station)
+  }
+
+  results = applyLiveControl(results)
+
+  render(results)
+
+}
+
+
+// ================= CONTROL =================
+
+function applyLiveControl(rows){
+
+  return rows.filter(r=>{
+
+    const c = liveData.train_control?.[r.train_no]
+
+    if(c?.running==="X") return false
+
+    if(!liveData.settings.show_additional && r.train_service==="A"){
+      return false
+    }
+
+    return true
+
+  }).map(r=>{
+
+    const c = liveData.train_control?.[r.train_no]
+
+    if(c?.delay_min){
+
+      return {
+        ...r,
+        arrival: addMinutes(r.arrival, c.delay_min),
+        departure: addMinutes(r.departure, c.delay_min),
+        delayed:true
+      }
+
+    }
+
+    return r
+
+  })
+
+}
+
+
+// ================= TIME =================
+
+function addMinutes(time, mins){
+
+  if(!time) return time
+
+  let [h,m]=time.split(":").map(Number)
+  let total=h*60+m+mins
+
+  return String(Math.floor(total/60)%24).padStart(2,"0")+":"+
+         String(total%60).padStart(2,"0")
+}
+
+
+// ================= RENDER =================
+
+function render(rows){
+
+  const tbody=document.getElementById("tbody")
+  tbody.innerHTML=""
+
+  rows.forEach(r=>{
+
+    let cls=r.delayed?"delayed":""
+
+    tbody.innerHTML+=`
+    <tr>
+      <td>${r.train_no}${r.train_service=="A"?"*":""}</td>
+      <td>${r.station_name}</td>
+      <td class="${cls}">${r.arrival||"-"}</td>
+      <td class="${cls}">${r.departure||"-"}</td>
+    </tr>
+    `
+
+  })
+
+}
+
+</script>
+
+</body>
+</html>
