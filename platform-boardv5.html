@@ -231,8 +231,9 @@ function getStatus(r){
   if(r.station_name === r.origin){
 
     if(minutes <= 0) return "Departed"
-    if(minutes <= 5) return "Final Call"
-    if(minutes <= 10) return "Boarding"
+    if(minutes <= 5) return "Gate Closed"
+    if(minutes <= 10) return "Final Call"
+    if(minutes <= 15) return "Boarding"
 
   }
 
