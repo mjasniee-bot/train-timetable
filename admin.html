@@ -2,18 +2,31 @@
 
 <html>
 <head>
-<title>PIDS Admin</title>
+<meta charset="UTF-8">
+<title>PIDS Admin Panel</title>
+
+<style>
+body{
+  background:#111;
+  color:white;
+  font-family:Arial;
+  padding:20px;
+}
+h1{color:#00ffcc;}
+div{margin-bottom:8px;}
+</style>
+
 </head>
 
 <body>
 
-<h2>Admin Panel</h2>
+<h1>PIDS ADMIN PANEL</h1>
 
 <label>
 <input type="checkbox" id="toggleAdditional"> Show Additional Train
 </label>
 
-<br><br>
+<hr>
 
 <div id="list"></div>
 
@@ -52,10 +65,10 @@ function render(){
 
     html += `
     <div>
-      ${t}
+      <b>${t}</b>
       <select id="s_${t}">
-        <option value="R">Running</option>
-        <option value="X">Stop</option>
+        <option value="R" ${c.running==="R"?"selected":""}>Running</option>
+        <option value="X" ${c.running==="X"?"selected":""}>Stop</option>
       </select>
 
       Delay:
