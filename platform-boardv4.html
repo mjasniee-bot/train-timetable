@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Platform Board (Live)</title>
+
+<style>
+
+body{
+  background:black;
+  color:#00ff9c;
+  font-family:monospace;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  font-size:40px;
+}
+
+select{
+  padding:10px;
+  font-size:18px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:22px;
+  margin-top:20px;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #033;
+}
+
+.next{
+  color:yellow;
+  font-weight:bold;
+}
+
+.delayed{
+  color:orange;
+}
+
+.past{
+  color:#555;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>PLATFORM BOARD</h1>
+
+<select id="station"></select> <button onclick="init()">Show</button>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Origin</th>
+<th>Destination</th>
+<th>Arrival</th>
+<th>Departure</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[]
+let liveData={}
+let allRows=[]
+
+
+// LOAD DATA
+async function loadData(){
+
+  const res = await fetch("data.json")
+  data = await res.json()
+
+  const stored = localStorage.getItem("liveData")
+
+  if(stored){
+    liveData = JSON.parse(stored)
+  }else{
+    liveData = { train_control:{}, settings:{ show_additional:true } }
+  }
+
+  populateStation()
+
+}
+
+loadData()
+setInterval(loadData,5000)
+
+
+// ================= STATION =================
+
+function populateStation(){
+
+  let stations=[...new Set(
+    data.filter(d=>d.station_name!="Unknown")
+        .map(d=>d.station_name)
+  )]
+
+  let sel=document.getElementById("station")
+  sel.innerHTML=""
+
+  stations.sort().forEach(s=>{
+    sel.innerHTML+=`<option value="${s}">${s}</option>`
+  })
+
+}
+
+
+// ================= TIME =================
+
+function getMinutes(time){
+
+  if(!time) return 9999
+
+  let now=new Date()
+  let cur=now.getHours()*60+now.getMinutes()
+
+  let [h,m]=time.split(":")
+  let t=parseInt(h)*60+parseInt(m)
+
+  return t-cur
+}
+
+
+// ================= ROUTE =================
+
+function getRoute(trainNo){
+
+  let route=data
+    .filter(d=>d.train_no==trainNo && d.station_name!="Unknown")
+    .sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
+  return {
+    origin:route[0]?.station_name || "-",
+    destination:route[route.length-1]?.station_name || "-"
+  }
+
+}
+
+
+// ================= CONTROL =================
+
+function applyLiveControl(rows){
+
+  return rows.filter(r=>{
+
+    const c=liveData.train_control?.[r.train_no]
+
+    if(c?.running==="X") return false
+
+    if(!liveData.settings.show_additional && r.train_service==="A"){
+      return false
+    }
+
+    return true
+
+  }).map(r=>{
+
+    const c=liveData.train_control?.[r.train_no]
+
+    if(c?.delay_min){
+
+      return {
+        ...r,
+        arrival:addMinutes(r.arrival,c.delay_min),
+        departure:addMinutes(r.departure,c.delay_min),
+        delayed:true
+      }
+
+    }
+
+    return r
+
+  })
+
+}
+
+function addMinutes(time,mins){
+
+  if(!time) return time
+
+  let [h,m]=time.split(":").map(Number)
+  let total=h*60+m+mins
+
+  return String(Math.floor(total/60)%24).padStart(2,"0")+":"+
+         String(total%60).padStart(2,"0")
+}
+
+
+// ================= INIT =================
+
+function init(){
+  prepareData()
+  render()
+}
+
+
+// ================= PREPARE =================
+
+function prepareData(){
+
+  let station=document.getElementById("station").value
+
+  let rows=data.filter(d=>d.station_name==station)
+
+  rows=applyLiveControl(rows)
+
+  rows=rows.map(r=>{
+
+    let eventTime=r.arrival || r.departure
+
+    return {
+      ...r,
+      minutes:getMinutes(eventTime),
+      ...getRoute(r.train_no)
+    }
+
+  })
+
+
+  // SHOW WINDOW (-60 min hingga +360 min)
+  rows=rows.filter(r=>r.minutes>=-60 && r.minutes<=360)
+
+
+  // REMOVE DUPLICATE TRAIN
+  let unique={}
+  rows.forEach(r=>{
+    if(!unique[r.train_no] || r.minutes < unique[r.train_no].minutes){
+      unique[r.train_no]=r
+    }
+  })
+
+  allRows=Object.values(unique)
+
+  allRows.sort((a,b)=>a.minutes-b.minutes)
+
+}
+
+
+// ================= RENDER =================
+
+function render(){
+
+  let html=""
+
+  allRows.forEach((r,i)=>{
+
+    let cls=""
+
+    if(r.minutes<0) cls="past"
+    else if(r.delayed) cls="delayed"
+    else if(i==0) cls="next"
+
+    let status="On Time"
+
+    if(r.delayed) status="Delayed"
+    if(r.minutes<0) status="Departed"
+
+    html+=`
+    <tr class="${cls}">
+      <td>${r.train_no}${r.train_service=="A"?"*":""}</td>
+      <td>${r.origin}</td>
+      <td>${r.destination}</td>
+      <td>${r.arrival||"-"}</td>
+      <td>${r.departure||"-"}</td>
+      <td>${status}</td>
+    </tr>
+    `
+  })
+
+  document.getElementById("board").innerHTML=html
+
+}
+
+
+// AUTO REFRESH DISPLAY
+setInterval(()=>{
+  init()
+},5000)
+
+</script>
+
+</body>
+</html>
