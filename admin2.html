@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>PIDS Admin Panel</title>
+
+<style>
+
+body{
+  background:#111;
+  color:white;
+  font-family:Arial;
+  padding:20px;
+}
+
+h1{
+  color:#00ffcc;
+}
+
+.controls{
+  margin-bottom:20px;
+}
+
+label{
+  margin-right:15px;
+}
+
+.trainRow{
+  margin-bottom:8px;
+  padding:8px;
+  border-bottom:1px solid #333;
+}
+
+select,input{
+  margin-left:10px;
+  margin-right:10px;
+}
+
+button{
+  padding:5px 10px;
+  cursor:pointer;
+}
+
+.additional{
+  color:orange;
+  font-weight:bold;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>PIDS ADMIN PANEL</h1>
+
+<div class="controls">
+
+  <label>
+    <input type="checkbox" id="showNormal" checked>
+    Normal Train (N)
+  </label>
+
+  <label>
+    <input type="checkbox" id="showAdditional" checked>
+    Additional Train (A)
+  </label>
+
+</div>
+
+<hr>
+
+<div id="list"></div>
+
+<script>
+
+let data=[]
+let liveData={ train_control:{}, settings:{ show_additional:true } }
+
+
+// ================= LOAD =================
+
+async function load(){
+
+  const res = await fetch("data.json")
+  data = await res.json()
+
+  const stored = localStorage.getItem("liveData")
+  if(stored){
+    liveData = JSON.parse(stored)
+  }
+
+  render()
+
+}
+
+load()
+
+
+// ================= RENDER =================
+
+function render(){
+
+  const showNormal = document.getElementById("showNormal").checked
+  const showAdditional = document.getElementById("showAdditional").checked
+
+  const trainMap={}
+
+  data.forEach(d=>{
+    if(!trainMap[d.train_no]){
+      trainMap[d.train_no] = d.train_service
+    }
+  })
+
+  const trains = Object.keys(trainMap).sort()
+
+  let html=""
+
+  trains.forEach(t=>{
+
+    const service = trainMap[t]
+
+    // FILTER
+    if(service==="N" && !showNormal) return
+    if(service==="A" && !showAdditional) return
+
+    const c = liveData.train_control[t] || {}
+
+    const display = service==="A"
+      ? `<span class="additional">${t}*</span>`
+      : t
+
+    html += `
+    <div class="trainRow">
+
+      <b>${display}</b>
+
+      Status:
+      <select id="s_${t}">
+        <option value="R" ${c.running==="R"?"selected":""}>Running</option>
+        <option value="X" ${c.running==="X"?"selected":""}>Stop</option>
+      </select>
+
+      Delay:
+      <input id="d_${t}" type="number" value="${c.delay_min || 0}">
+
+      <button onclick="save('${t}')">Save</button>
+
+    </div>
+    `
+
+  })
+
+  document.getElementById("list").innerHTML = html
+
+}
+
+
+// ================= SAVE =================
+
+function save(train){
+
+  const status = document.getElementById("s_"+train).value
+  const delay = Number(document.getElementById("d_"+train).value)
+
+  liveData.train_control[train] = {
+    running: status,
+    delay_min: delay
+  }
+
+  localStorage.setItem("liveData", JSON.stringify(liveData))
+
+  alert("Updated")
+
+}
+
+
+// ================= FILTER EVENT =================
+
+document.getElementById("showNormal").addEventListener("change", render)
+document.getElementById("showAdditional").addEventListener("change", render)
+
+</script>
+
+</body>
+
+</html>
