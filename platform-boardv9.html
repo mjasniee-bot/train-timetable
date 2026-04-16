@@ -261,8 +261,9 @@ function getStatus(r){
 
   if(m<=0) return "Departed"
 
-  if(m<=3) return "FINAL CALL"
-  if(m<=10) return "Boarding"
+  if(m<=5) return "GATE CLOSED"
+  if(m<=10) return "FINAL CALL"
+
 
   return "On Schedule"
 }
