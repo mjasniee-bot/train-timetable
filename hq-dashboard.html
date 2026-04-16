@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>HQ Monitoring Dashboard</title>
+
+<style>
+
+body{
+  background:#000;
+  color:#00ff9c;
+  font-family:monospace;
+  margin:0;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  font-size:40px;
+}
+
+.clock{
+  position:absolute;
+  top:20px;
+  right:40px;
+  font-size:24px;
+  color:white;
+}
+
+.summary{
+  display:flex;
+  justify-content:space-around;
+  margin:20px 0;
+  font-size:20px;
+}
+
+.card{
+  padding:10px 20px;
+  border:1px solid #00ff9c;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:18px;
+}
+
+th,td{
+  padding:8px;
+  border-bottom:1px solid #033;
+}
+
+.delayed{ color:red; }
+.warning{ color:yellow; }
+.normal{ color:#00ff9c; }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="clock" id="clock"></div>
+
+<h1>HQ TRAIN MONITORING</h1>
+
+<div class="summary">
+  <div class="card">Total: <span id="total">0</span></div>
+  <div class="card">Delayed: <span id="delayed">0</span></div>
+  <div class="card">Running: <span id="running">0</span></div>
+  <div class="card">Stopped: <span id="stopped">0</span></div>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Station</th>
+<th>Destination</th>
+<th>Time</th>
+<th>MIN</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+
+</table>
+
+<script>
+
+let data=[]
+let liveData={}
+
+async function loadData(){
+
+  const res = await fetch("data.json")
+  data = await res.json()
+
+  const stored = localStorage.getItem("liveData")
+  if(stored){
+    liveData = JSON.parse(stored)
+  }
+
+}
+
+loadData()
+setInterval(loadData,5000)
+
+
+// CLOCK
+setInterval(()=>{
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString()
+},1000)
+
+
+// TIME
+function getMinutes(time){
+  if(!time) return null
+  let now=new Date()
+  let cur=now.getHours()*60+now.getMinutes()
+  let [h,m]=time.split(":")
+  return parseInt(h)*60+parseInt(m)-cur
+}
+
+
+// ROUTE
+function getDestination(trainNo){
+  let route=data.filter(d=>d.train_no==trainNo && d.station_name!="Unknown")
+    .sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
+  return route[route.length-1]?.station_name
+}
+
+
+// CONTROL
+function applyLiveControl(r){
+
+  const c=liveData.train_control?.[r.train_no]
+
+  if(c?.running==="X") return null
+
+  if(c?.delay_flag){
+    return {...r, delayed:true}
+  }
+
+  if(c?.delay_min){
+    return {
+      ...r,
+      departure:addMinutes(r.departure,c.delay_min),
+      delayed:true
+    }
+  }
+
+  return r
+}
+
+function addMinutes(time,mins){
+  if(!time) return time
+  let [h,m]=time.split(":").map(Number)
+  let total=h*60+m+mins
+  return String(Math.floor(total/60)%24).padStart(2,"0")+":"+
+         String(total%60).padStart(2,"0")
+}
+
+
+// STATUS
+function getStatus(r){
+
+  if(r.delayed) return "Delayed"
+
+  let m=r.minutes
+
+  if(m<=0) return "Departed"
+  if(m<=3) return "Final Call"
+  if(m<=10) return "Boarding"
+
+  return "On Schedule"
+}
+
+
+// RENDER
+function render(){
+
+  let rows=[]
+
+  data.forEach(d=>{
+
+    let r=applyLiveControl(d)
+    if(!r) return
+
+    let eventTime=r.departure || r.arrival
+
+    let obj={
+      ...r,
+      minutes:getMinutes(eventTime),
+      destination:getDestination(r.train_no)
+    }
+
+    if(obj.minutes>=-30 && obj.minutes<=180){
+      rows.push(obj)
+    }
+
+  })
+
+  // REMOVE DUPLICATE
+  let unique={}
+  rows.forEach(r=>{
+    if(!unique[r.train_no] || r.minutes < unique[r.train_no].minutes){
+      unique[r.train_no]=r
+    }
+  })
+
+  let finalRows=Object.values(unique).sort((a,b)=>a.minutes-b.minutes)
+
+  // SUMMARY
+  document.getElementById("total").innerText = finalRows.length
+  document.getElementById("delayed").innerText = finalRows.filter(r=>r.delayed).length
+  document.getElementById("running").innerText = finalRows.length
+  document.getElementById("stopped").innerText =
+    Object.keys(liveData.train_control || {}).filter(t=>liveData.train_control[t]?.running==="X").length
+
+  let html=""
+
+  finalRows.forEach(r=>{
+
+    let cls="normal"
+    if(r.delayed) cls="delayed"
+    else if(r.minutes<=5) cls="warning"
+
+    html+=`
+    <tr class="${cls}">
+      <td>${r.train_no}</td>
+      <td>${r.station_name}</td>
+      <td>${r.destination}</td>
+      <td>${r.departure||"-"}</td>
+      <td>${r.minutes || "-"}</td>
+      <td>${getStatus(r)}</td>
+    </tr>
+    `
+  })
+
+  document.getElementById("board").innerHTML=html
+
+}
+
+// LIVE
+setInterval(render,2000)
+
+</script>
+
+</body>
+</html>
