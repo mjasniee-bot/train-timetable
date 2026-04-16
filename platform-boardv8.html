@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Platform Board (Live)</title>
+
+<style>
+
+body{
+  background:black;
+  color:#00ff9c;
+  font-family:monospace;
+  padding:20px;
+}
+
+h1{ text-align:center; font-size:36px; }
+
+.clock{
+  position:absolute;
+  top:20px;
+  right:40px;
+  font-size:22px;
+  color:white;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:22px;
+  margin-top:20px;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #033;
+}
+
+.next{ color:yellow; font-weight:bold; }
+.delayed{ color:orange; }
+.past{ color:#555; }
+
+.min-green{ color:#00ff00; }
+.min-yellow{ color:yellow; }
+.min-orange{ color:orange; }
+.min-red{ color:red; }
+
+.finalcall{
+  color:red;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink{
+  50%{opacity:0;}
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="clock" id="clock"></div>
+
+<h1>PLATFORM BOARD (LIVE)</h1>
+
+<select id="station"></select>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Origin</th>
+<th>Destination</th>
+<th>Arrival</th>
+<th>Departure</th>
+<th>Arr MIN</th>
+<th>Dep MIN</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="board"></tbody>
+</table>
+
+<script>
+
+let data=[]
+let liveData={}
+
+
+// ================= LOAD =================
+
+async function loadData(){
+
+  const res = await fetch("data.json")
+  data = await res.json()
+
+  const stored = localStorage.getItem("liveData")
+  if(stored){
+    liveData = JSON.parse(stored)
+  }
+
+  populateStation()
+}
+
+loadData()
+setInterval(loadData,5000)
+
+
+// ================= CLOCK =================
+
+setInterval(()=>{
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString()
+},1000)
+
+
+// ================= STATION =================
+
+function populateStation(){
+
+  let stations=[...new Set(
+    data.filter(d=>d.station_name!="Unknown")
+        .map(d=>d.station_name)
+  )]
+
+  let sel=document.getElementById("station")
+
+  if(sel.options.length===0){
+    stations.sort().forEach(s=>{
+      sel.innerHTML+=`<option value="${s}">${s}</option>`
+    })
+  }
+}
+
+
+// ================= TIME =================
+
+function getMinutes(time){
+  if(!time) return null
+
+  let now=new Date()
+  let cur=now.getHours()*60+now.getMinutes()
+
+  let [h,m]=time.split(":")
+  return parseInt(h)*60+parseInt(m)-cur
+}
+
+
+// ================= ROUTE =================
+
+function getRoute(trainNo){
+
+  let route=data
+    .filter(d=>d.train_no==trainNo && d.station_name!="Unknown")
+    .sort((a,b)=>a.tmt_seq_no-b.tmt_seq_no)
+
+  return {
+    origin:route[0]?.station_name,
+    destination:route[route.length-1]?.station_name
+  }
+}
+
+
+// ================= CONTROL =================
+
+function applyLiveControl(rows){
+
+  return rows.map(r=>{
+
+    const c=liveData.train_control?.[r.train_no]
+
+    if(c?.running==="X") return null
+
+    if(c?.delay_flag){
+      return {...r, delayed:true, originalTime:true}
+    }
+
+    if(c?.delay_min){
+      return {
+        ...r,
+        arrival:addMinutes(r.arrival,c.delay_min),
+        departure:addMinutes(r.departure,c.delay_min),
+        delayed:true
+      }
+    }
+
+    return r
+
+  }).filter(Boolean)
+}
+
+function addMinutes(time,mins){
+
+  if(!time) return time
+
+  let [h,m]=time.split(":").map(Number)
+  let total=h*60+m+mins
+
+  return String(Math.floor(total/60)%24).padStart(2,"0")+":"+
+         String(total%60).padStart(2,"0")
+}
+
+
+// ================= MIN DISPLAY =================
+
+function getMinDisplay(time, r){
+
+  if(!time) return {text:"-", cls:""}
+
+  let min=getMinutes(time)
+
+  if(r.delayed && r.originalTime){
+    return {text:"-", cls:""}
+  }
+
+  if(min===null || min<=0){
+    return {text:"-", cls:""}
+  }
+
+  let cls=""
+
+  if(min>10) cls="min-green"
+  else if(min>5) cls="min-yellow"
+  else if(min>1) cls="min-orange"
+  else cls="min-red"
+
+  return {text:min, cls:cls}
+}
+
+
+// ================= STATUS =================
+
+function getStatus(r){
+
+  let m=r.minutes
+
+  if(r.delayed && r.originalTime) return "Delayed"
+
+  if(r.delayed) return "Delayed"
+
+  if(m<=0) return "Departed"
+
+  if(m<=3) return "FINAL CALL"
+  if(m<=10) return "Boarding"
+
+  return "On Schedule"
+}
+
+
+// ================= RENDER =================
+
+function render(){
+
+  let station=document.getElementById("station").value
+
+  let rows=data.filter(d=>d.station_name==station)
+
+  rows=applyLiveControl(rows)
+
+  rows=rows.map(r=>{
+    let eventTime=r.arrival || r.departure
+    return {
+      ...r,
+      minutes:getMinutes(eventTime),
+      ...getRoute(r.train_no)
+    }
+  })
+
+  rows=rows.filter(r=>r.minutes>=-60 && r.minutes<=360)
+
+  let unique={}
+  rows.forEach(r=>{
+    if(!unique[r.train_no] || r.minutes < unique[r.train_no].minutes){
+      unique[r.train_no]=r
+    }
+  })
+
+  let finalRows=Object.values(unique).sort((a,b)=>a.minutes-b.minutes)
+
+  let html=""
+
+  finalRows.forEach((r,i)=>{
+
+    let cls=""
+    if(r.minutes<0) cls="past"
+    else if(r.delayed) cls="delayed"
+    else if(i==0) cls="next"
+
+    let arrMin=getMinDisplay(r.arrival,r)
+    let depMin=getMinDisplay(r.departure,r)
+
+    let status=getStatus(r)
+
+    let statusClass = (status==="FINAL CALL") ? "finalcall" : ""
+
+    html+=`
+    <tr class="${cls}">
+      <td>${r.train_no}${r.train_service=="A"?"*":""}</td>
+      <td>${r.origin}</td>
+      <td>${r.destination}</td>
+      <td>${r.arrival||"-"}</td>
+      <td>${r.departure||"-"}</td>
+      <td class="${arrMin.cls}">${arrMin.text}</td>
+      <td class="${depMin.cls}">${depMin.text}</td>
+      <td class="${statusClass}">${status}</td>
+    </tr>
+    `
+  })
+
+  document.getElementById("board").innerHTML=html
+}
+
+setInterval(render,1000)
+
+</script>
+
+</body>
+</html>
