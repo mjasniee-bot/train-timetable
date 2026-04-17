@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Train Timetable</title>
+<style>
+body{font-family:Arial;background:#111;color:white;padding:20px;}
+h1{color:#00ffcc;}
+input,button{padding:8px;margin-right:8px;}
+table{border-collapse:collapse;width:100%;margin-top:20px;}
+th,td{border:1px solid #444;padding:8px;text-align:center;}
+th{background:#00ffcc;color:black;}
+.note{margin-top:10px;color:#aaa;font-size:12px;}
+.error{color:#ff8080;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<h1>Train Timetable (Live API)</h1>
+
+<input id="trainNo" placeholder="Train Number e.g. 2052">
+<input id="trainDate" value="17-Apr-2026">
+<button onclick="searchTrain()">Search</button>
+
+<div class="note">Format date: 17-Apr-2026</div>
+<div id="msg" class="error"></div>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Seq</th>
+<th>Station</th>
+<th>Arrival</th>
+<th>Departure</th>
+<th>Service</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<script>
+async function searchTrain() {
+  const trainNo = document.getElementById("trainNo").value.trim();
+  const trainDate = document.getElementById("trainDate").value.trim();
+  const msg = document.getElementById("msg");
+  const tbody = document.getElementById("tbody");
+
+  msg.innerText = "";
+  tbody.innerHTML = "";
+
+  if (!trainNo || !trainDate) {
+    msg.innerText = "Please fill train number and date.";
+    return;
+  }
+
+  try {
+    const url = `/api/timetable?trainnum=${encodeURIComponent(trainNo)}&TrainDate=${encodeURIComponent(trainDate)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.innerText = data.error || "Failed to load timetable.";
+      return;
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+      msg.innerText = "No timetable found.";
+      return;
+    }
+
+    data.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.train_no}${r.train_service === "A" ? "*" : ""}</td>
+        <td>${r.tmt_seq_no ?? "-"}</td>
+        <td>${r.station_name || "Unknown"}</td>
+        <td>${r.arrival || "-"}</td>
+        <td>${r.departure || "-"}</td>
+        <td>${r.train_service || "-"}</td>
+        <td>${r.train_running || "-"}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    msg.innerText = "Error: " + err.message;
+  }
+}
+</script>
+
+</body>
+</html>
