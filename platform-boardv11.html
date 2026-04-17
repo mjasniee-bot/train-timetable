@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Platform Board (Live API)</title>
+<style>
+body{background:black;color:#00ff9c;font-family:monospace;padding:20px;}
+h1{text-align:center;font-size:36px;}
+.clock{position:absolute;top:20px;right:40px;font-size:26px;color:white;}
+.controls{margin-bottom:20px;}
+input,button,select{padding:8px;margin-right:8px;}
+table{width:100%;border-collapse:collapse;font-size:22px;margin-top:20px;}
+th,td{padding:10px;border-bottom:1px solid #033;}
+.min-green{color:#00ff00;}
+.min-yellow{color:yellow;}
+.min-orange{color:orange;}
+.min-red{color:red;}
+.finalcall{color:red;animation:blink 1s infinite;}
+@keyframes blink{50%{opacity:0;}}
+.delayed{color:orange;}
+.error{color:#ff8080;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div class="clock" id="clock"></div>
+
+<h1>PLATFORM BOARD (LIVE API)</h1>
+
+<div class="controls">
+  <input id="station" placeholder="Station e.g. KL SENTRAL">
+  <input id="trainDate" value="17-Apr-2026">
+  <input id="trainList" style="width:360px" placeholder="Train list e.g. 2052,2054,2056">
+  <button onclick="loadBoard()">Load Board</button>
+</div>
+
+<div id="msg" class="error"></div>
+
+<table>
+<thead>
+<tr>
+<th>Train</th>
+<th>Origin</th>
+<th>Destination</th>
+<th>Arrival</th>
+<th>Departure</th>
+<th>Arr MIN</th>
+<th>Dep MIN</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="board"></tbody>
+</table>
+
+<script>
+let liveData = {};
+
+function updateClock() {
+  document.getElementById("clock").innerText = new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function getMinutes(time) {
+  if (!time) return null;
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m - cur;
+}
+
+function addMinutes(time, mins) {
+  if (!time) return time;
+  const [h, m] = time.split(":").map(Number);
+  const total = h * 60 + m + mins;
+  return String(Math.floor(total / 60) % 24).padStart(2, "0") + ":" +
+         String(total % 60).padStart(2, "0");
+}
+
+function getMinDisplay(time, r) {
+  if (!time) return { text: "-", cls: "" };
+
+  if (r.delayed && r.originalTime) {
+    return { text: "-", cls: "" };
+  }
+
+  const min = getMinutes(time);
+  if (min === null || min <= 0) {
+    return { text: "-", cls: "" };
+  }
+
+  let cls = "";
+  if (min > 10) cls = "min-green";
+  else if (min > 5) cls = "min-yellow";
+  else if (min > 1) cls = "min-orange";
+  else cls = "min-red";
+
+  return { text: min, cls };
+}
+
+function getStatus(r) {
+  const m = r.minutes;
+
+  if (r.delayed) return "Delayed";
+
+  const isDeparture = !!r.departure;
+  const isArrival = !r.departure && !!r.arrival;
+
+  if (isArrival) {
+    if (m <= 0) return "Arrived";
+    return "On Schedule";
+  }
+
+  if (isDeparture) {
+    if (m <= 0) return "Departed";
+    if (m <= 3) return "GATE CLOSED";
+    if (m <= 5) return "FINAL CALL";
+    if (m <= 10) return "Boarding";
+    return "On Schedule";
+  }
+
+  return "On Schedule";
+}
+
+function applyLiveControl(rows) {
+  return rows.map(r => {
+    const c = liveData.train_control?.[r.train_no];
+
+    if (c?.running === "X") return null;
+
+    if (c?.delay_flag) {
+      return { ...r, delayed: true, originalTime: true };
+    }
+
+    if (c?.delay_min && c.delay_min > 0) {
+      return {
+        ...r,
+        arrival: addMinutes(r.arrival, c.delay_min),
+        departure: addMinutes(r.departure, c.delay_min),
+        delayed: true,
+        originalTime: false
+      };
+    }
+
+    return { ...r, delayed: false, originalTime: false };
+  }).filter(Boolean);
+}
+
+function buildRoutes(rows) {
+  const byTrain = {};
+  rows.forEach(r => {
+    if (!byTrain[r.train_no]) byTrain[r.train_no] = [];
+    byTrain[r.train_no].push(r);
+  });
+
+  const routeMap = {};
+  Object.keys(byTrain).forEach(train => {
+    const list = byTrain[train].slice().sort((a, b) => a.tmt_seq_no - b.tmt_seq_no);
+    routeMap[train] = {
+      origin: list[0]?.station_name || "-",
+      destination: list[list.length - 1]?.station_name || "-"
+    };
+  });
+
+  return routeMap;
+}
+
+async function loadBoard() {
+  const station = document.getElementById("station").value.trim();
+  const trainDate = document.getElementById("trainDate").value.trim();
+  const trainList = document.getElementById("trainList").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const msg = document.getElementById("msg");
+  const board = document.getElementById("board");
+  msg.innerText = "";
+  board.innerHTML = "";
+
+  if (!station || !trainDate || trainList.length === 0) {
+    msg.innerText = "Please fill station, date and train list.";
+    return;
+  }
+
+  const stored = localStorage.getItem("liveData");
+  if (stored) {
+    liveData = JSON.parse(stored);
+  } else {
+    liveData = { train_control: {}, settings: { show_additional: true } };
+  }
+
+  try {
+    const res = await fetch("/api/station-board", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        station,
+        TrainDate: trainDate,
+        trainList
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.innerText = data.error || "Failed to load station board.";
+      return;
+    }
+
+    if (!Array.isArray(data) || data.length === 0) {
+      msg.innerText = "No trains found for this station/date.";
+      return;
+    }
+
+    const routeMap = buildRoutes(data);
+    let rows = applyLiveControl(data);
+
+    rows = rows.map(r => {
+      const eventTime = r.departure ? r.departure : r.arrival;
+      return {
+        ...r,
+        minutes: getMinutes(eventTime),
+        origin: routeMap[r.train_no]?.origin || "-",
+        destination: routeMap[r.train_no]?.destination || "-"
+      };
+    });
+
+    // remove duplicate keep nearest row
+    const unique = {};
+    rows.forEach(r => {
+      if (!unique[r.train_no] || r.minutes < unique[r.train_no].minutes) {
+        unique[r.train_no] = r;
+      }
+    });
+
+    const finalRows = Object.values(unique).sort((a, b) => a.minutes - b.minutes);
+
+    finalRows.forEach(r => {
+      const arrMin = getMinDisplay(r.arrival, r);
+      const depMin = getMinDisplay(r.departure, r);
+      const status = getStatus(r);
+      const statusClass =
+        status === "FINAL CALL" || status === "GATE CLOSED" ? "finalcall" :
+        status === "Delayed" ? "delayed" : "";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.train_no}${r.train_service === "A" ? "*" : ""}</td>
+        <td>${r.origin}</td>
+        <td>${r.destination}</td>
+        <td>${r.arrival || "-"}</td>
+        <td>${r.departure || "-"}</td>
+        <td class="${arrMin.cls}">${arrMin.text}</td>
+        <td class="${depMin.cls}">${depMin.text}</td>
+        <td class="${statusClass}">${status}</td>
+      `;
+      board.appendChild(tr);
+    });
+
+  } catch (err) {
+    msg.innerText = "Error: " + err.message;
+  }
+}
+</script>
+
+</body>
+</html>
